@@ -1,0 +1,5 @@
+*.so
+*.bin
+*.exe
+*.dll
+rducc
