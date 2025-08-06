@@ -9,7 +9,8 @@ rducc_shader_load :: proc(vs_shader, fs_shader: string) -> u32 {
 	if !ok {
 		panic(fmt.tprintfln("FAILED TO LOAD SHADERS: %v",gl.get_last_error_message()))
 	}
-	gl.get_uniforms_from_program(program_id)
+	ctx.loaded_uniforms = gl.get_uniforms_from_program(program_id)
+	fmt.println(program_id)
 	gl.UseProgram(program_id)
 	return program_id
 }

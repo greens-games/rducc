@@ -1,12 +1,19 @@
 package lib
 
+/*
+CONSIDER THIS THE PLATFORM LAYER
+	- Current just sets up the window and checks if it should close it
+	- Setup to only be for glfw right now
+	- Avoid adding any renderer specific properties or logics
+
+*/
+
 import "base:runtime"
 import "core:fmt"
 import "core:c"
 import "vendor:glfw"
-import gl "vendor:OpenGL"
 
-rducc_window_init :: proc(window_width, window_height: i32, name: cstring) -> glfw.WindowHandle {
+rducc_window_init :: proc(window_width, window_height: i32, name: cstring) {
 
 	//SetUp stuff
 	if glfw.Init() != true {
@@ -22,18 +29,12 @@ rducc_window_init :: proc(window_width, window_height: i32, name: cstring) -> gl
 	}
 	glfw.MakeContextCurrent(window_handle)
 	glfw.SwapInterval(0)
-	gl.load_up_to(4, 6, glfw.gl_set_proc_address) //required for proc address stuff
-	gl.Viewport(0, 0, window_width, window_height)
-	glfw.SetFramebufferSizeCallback(window_handle, rducc_resize_callback)
 
 	glfw.SetInputMode(window_handle, glfw.CURSOR, glfw.CURSOR_DISABLED)
 	glfw.SetCursorPosCallback(window_handle, rducc_mouse_move_callback)
 	glfw.SetMouseButtonCallback(window_handle, rducc_move_button_callback)
 
-	//Enables alpha transparency
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	return window_handle
+	ctx.window_hndl = window_handle
 }
 
 rducc_error_callback :: proc "c" (error: c.int, description: cstring) {
@@ -49,6 +50,16 @@ rducc_move_button_callback :: proc "c" (window: glfw.WindowHandle, button, actio
 	context = runtime.default_context()
 }
 
+/* TODO: add some way to do this that doesn't lock in a render layer specific
 rducc_resize_callback :: proc "c" (window: glfw.WindowHandle, width: c.int, height: c.int) {
 	gl.Viewport(0, 0, width, height)
+} */
+
+rducc_window_close :: proc() -> bool {
+	if glfw.GetKey(ctx.window_hndl, glfw.KEY_ESCAPE) == glfw.PRESS {
+		glfw.SetWindowShouldClose(ctx.window_hndl, true)
+	}
+	glfw.PollEvents()
+	glfw.SwapBuffers(ctx.window_hndl)
+	return bool(glfw.WindowShouldClose(ctx.window_hndl))
 }
