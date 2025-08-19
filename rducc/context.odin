@@ -1,4 +1,4 @@
-package lib
+package rducc
 
 import "vendor:glfw"
 import gl "vendor:OpenGL"
@@ -7,16 +7,21 @@ Shader_Defaults :: enum {
 
 }
 
-Rducc_Context :: struct {
-	window_hndl: glfw.WindowHandle,
-	window_width: i32, 
-	window_height: i32,
-	program_cache: [10]u32,
-	loaded_program: u32,
+Context :: struct {
+	window_hndl:     glfw.WindowHandle,
+	window_width:    i32, 
+	window_height:   i32,
+	program_cache:   [10]u32,
+	loaded_program:  u32,
 	loaded_uniforms: gl.Uniforms,
-
+	gl_ebo:          u32,
+	gl_vbo:          u32,
+	gl_vao:          u32,
+	time:            f64,
+	mouse_pos:       [2]f32,
+	indices:         []u32,
 }
 
 //TODO: This probably shouldn't be a static global, maybe make it a pointer you can pass around when needed on init?
 // That being said the consumer probably shouldn't care too much about this context it's more for the platform layer and/or renderer to use to do stuff
-ctx := Rducc_Context{}
+ctx: Context

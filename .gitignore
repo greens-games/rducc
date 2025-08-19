@@ -2,4 +2,8 @@
 *.bin
 *.exe
 *.dll
-rducc
+*.obj
+*.lib
+*.pdb
+*.rdi
+*.exp
