@@ -176,6 +176,14 @@ renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	gl.DrawArrays(gl.LINES, 0, 8)
 }
 
+renderer_circle :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+
+}
+
+renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+
+}
+
 renderer_mvp_apply :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 
 	projection := glm.mat4Ortho3d(0.0, f32(ctx.window_width), 0.0, f32(ctx.window_height), -1.0, 1.0)

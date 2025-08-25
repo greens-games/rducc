@@ -54,7 +54,6 @@ main :: proc() {
 	run()
 }
 
-//TODO: TEST FOR DRAWING 1 BOX FOR EACH 16x16 SECITON OF WINDOW
 run :: proc() {
 	entities: [1024]Entity
 	entity_count := 0
@@ -89,36 +88,73 @@ run :: proc() {
 		//NOTE: This porbably shouldn't stay find a better way to handle freeing bullets
 		bullets_to_free := make_dynamic_array([dynamic]Entity, context.temp_allocator)
 
+		//TC: INIT
 		m_pos := rducc.window_mouse_pos()
 		curr_rotation_radians := math.atan2((player.pos.y ) - m_pos.y, (player.pos.x ) - m_pos.x)
 		curr_rotation_degrees := math.to_degrees(curr_rotation_radians)
 		dt := rducc.time_delta_get()
 		player.fire_rate_cd -= f32(dt)
 		player.rotation = curr_rotation_degrees
+
+		//TC: INPUT
 		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) && player.fire_rate_cd <= 0 {
 			bullet: Entity
 			bullet.pos = player.pos
+			bullet.scale = {8,8}
 			bullet.rotation = player.rotation
+			bullet.collider = {
+				origin = bullet.pos,
+				scale = bullet.scale,
+			}
 			dist: [2]f32 = m_pos - player.pos
 			bullet.direction = linalg.vector_normalize(dist)
 			append(&bullets, bullet)
 			player.fire_rate_cd = player.fire_rate
-			fmt.println("CURR_ROTATION_RADIANS: ",curr_rotation_radians)
+		}
+
+		if rducc.window_is_key_down(.KEY_W) {
+			player.velocity.y += f32(100. * dt)
 		}
 
 		if rducc.window_is_key_down(.KEY_A) {
 			player.velocity.x -= f32(100. * dt)
-		}
-		if rducc.window_is_key_down(.KEY_D) {
-			player.velocity.x += f32(100. * dt)
 		}
 
 		if rducc.window_is_key_down(.KEY_S) {
 			player.velocity.y -= f32(100. * dt)
 		}
 
-		if rducc.window_is_key_down(.KEY_W) {
-			player.velocity.y += f32(100. * dt)
+		if rducc.window_is_key_down(.KEY_D) {
+			player.velocity.x += f32(100. * dt)
+		}
+
+		// TC: PHYSICS
+
+		r_matrix := matrix[2, 2]f32 {
+			math.cos(curr_rotation_degrees), -math.sin(curr_rotation_degrees),
+			math.sin(curr_rotation_degrees),  math.cos(curr_rotation_degrees)
+		}
+
+		for &bullet in bullets {
+			bullet.velocity += bullet.direction * 250. * f32(dt)
+			for idx in 1..<entity_count{
+				e := entities[idx]
+				if pducc.rect_collision({
+					origin = bullet.collider.origin + bullet.velocity,
+					scale = bullet.collider.scale
+				},
+				e.collider) {
+					bullet.to_free = true
+				}
+			}
+			bullet.pos += bullet.velocity
+			bullet.collider.origin += bullet.velocity
+			bullet.velocity = {}
+			if bullet.pos.x > f32(rducc.window_width()) || bullet.pos.x < 0. {
+				bullet.to_free = true
+			} else if bullet.pos.y > f32(rducc.window_height()) || bullet.pos.y < 0. {
+				bullet.to_free = true
+			}
 		}
 
 		if pducc.rect_collision({
@@ -131,35 +167,30 @@ run :: proc() {
 		player.pos += player.velocity
 		player.collider.origin += player.velocity
 		player.velocity = {}
+
+		//TC: RENDER
 		rducc.renderer_background_clear(rducc.GRAY)
 		for &bullet in bullets {
-			bullet.velocity += bullet.direction * 250. * f32(dt)
-			/* TODO: Check for collision:
-				This may warrant doing a tile_map type shtick so I can just check the things in the area
-				Check all entities in the world's position which is slow
-				Check only things in an area without tile_map which but we need a way to know the things in the area */
-			bullet.pos += bullet.velocity
-			bullet.velocity = {}
-			rducc.renderer_box({bullet.pos, {8,16}, bullet.rotation}, {rducc.BLACK})
-			if bullet.pos.x > f32(rducc.window_width()) || bullet.pos.x < 0. {
-				bullet.to_free = true
-			} else if bullet.pos.y > f32(rducc.window_height()) || bullet.pos.y < 0. {
-				bullet.to_free = true
+			rducc.renderer_box({bullet.pos, bullet.scale, bullet.rotation}, {rducc.BLACK})
+			if debug_draw_colliders {
+				rducc.renderer_box_lines({bullet.pos, bullet.scale, bullet.rotation}, {rducc.GREEN})
 			}
 		}
 
-		//NOTE: This is really bad and should probably not stay, find a better way to free bullets
-		for bullet, i in bullets {
-			if bullet.to_free {
-				append(&bullets_to_free, bullet)
-				ordered_remove(&bullets, i)
-			}
-		}
 		for idx in 0..<entity_count {
 			e := entities[idx]
 			rducc.renderer_box({e.pos, e.scale, e.rotation}, {rducc.BLUE})
 			if debug_draw_colliders {
 				rducc.renderer_box_lines({e.collider.origin, e.collider.scale, e.rotation}, {rducc.GREEN})
+			}
+		}
+
+		//TC: CLEANUP
+		//NOTE: This is really bad and should probably not stay, find a better way to free bullets
+		for bullet, i in bullets {
+			if bullet.to_free {
+				append(&bullets_to_free, bullet)
+				ordered_remove(&bullets, i)
 			}
 		}
 		free_all()

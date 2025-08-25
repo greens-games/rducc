@@ -4,14 +4,20 @@
 
 
 ## Current tasks
+- Renderer
+    - Draw polygons
+    - Draw circle
 - Physics
-    - Check collision accounting for rotation
+    - Polygon collisions
+    - Circle collisions
+        - Circle - Circle
+        - Circle - Rect
 - Game
-    - Check bullet and other collisions without having to loop through all entities many times
     - Enemies
     - Weapons
 
 ## Renderer TODOs
+- Draw Polygons
 - Draw text (start with bitmap fonts)
 - Draw sprite/texture
 - Draw circle
@@ -19,9 +25,6 @@
     - Shaders
     - Textures
     - Gameplay code
-
-## Physics TODOs
-- Check rect collisions accounting for rotation
 
 ## Plans
 - Possibly use the renderer to build a game
