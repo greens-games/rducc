@@ -185,6 +185,9 @@ run :: proc() {
 			}
 		}
 
+		rducc.renderer_polygon({{50.,50.}, 32, 0.}, {rducc.BLUE})
+
+
 		//TC: CLEANUP
 		//NOTE: This is really bad and should probably not stay, find a better way to free bullets
 		for bullet, i in bullets {

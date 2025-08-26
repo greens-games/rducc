@@ -40,11 +40,13 @@ BLACK      :: Color{ 0, 0, 0, 255 }         // Black
 BLANK      :: Color{ 0, 0, 0, 0 }           // Blank (Transparent)
 MAGENTA    :: Color{ 255, 0, 255, 255 }     // Magenta
 
+//TODO: We may want to create a struct for our vertices so we can more easily send more data to the GPU
+//I believe this mainly affects sending attributes to shaders, may also minorly affect the DrawCalls and BufferData but I don't 100% remember
 vertices_index_box := [?]f32 {
-	1.0, 1.0, 0.0,
-	1.0, -1.0, 0.0,
-	-1.0, -1.0, 0.0,
-	-1.0, 1.0, 0.0,
+	 1.,  1., 0.,
+	 1., -1., 0.,
+	-1., -1., 0.,
+	-1.,  1., 0.,
 }
 
 
@@ -90,6 +92,8 @@ renderer_init :: proc() {
 	/* gl.BindBuffer(gl.ARRAY_BUFFER, 0) */
 	//NOTE: In the OpenGL and Odin examples they bind VertexArray first but for us we need to bind last unsure why
 	gl.BindVertexArray(VAO)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 3 * size_of(f32), 0)
+	gl.EnableVertexAttribArray(0)
 }
 
 debug_proc_t :: proc "c" (source: u32, type: u32, id: u32, severity: u32, length: i32, message: cstring, userParam: rawptr) {
@@ -160,27 +164,41 @@ renderer_box :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	//TODO: This could be indices if we can figure out how to not get the errors?
 	vertices := [?]f32 {
-		1., 1., 0.,
-		1., -1., 0.,
-		1., -1., 0.,
+		 1.,  1., 0.,
+		 1., -1., 0.,
+		 1., -1., 0.,
 		-1., -1., 0.,
 		-1., -1., 0.,
-		-1., 1., 0.,
-		-1., 1., 0.,
-		1., 1., 0.,
+		-1.,  1., 0.,
+		-1.,  1., 0.,
+		 1.,  1., 0.,
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
 	renderer_mvp_apply(vert_info, frag_info)
-	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 	gl.DrawArrays(gl.LINES, 0, 8)
 }
 
-renderer_circle :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
-
+//NOTE: For polygons we need to define the vertices we are doing and adjust scaling based on that I think
+renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+	vertices := [?]f32 {
+		 1.,  1., 0.,
+		 1., -1., 0.,
+		-1.,  1., 0.,
+		 1., -1., 0.,
+		-1., -1., 0.,
+		-1.,  1., 0.,
+		 1.,  1., 0.,
+		 1., -1., 0.,
+		-1.,  1., 0.,
+	}
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	renderer_mvp_apply(vert_info, frag_info)
+	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	gl.DrawArrays(gl.TRIANGLES, 0, 9)
 }
 
-renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_circle :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 
 }
 
@@ -207,7 +225,5 @@ renderer_mvp_apply :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	//TODO: Colour can probably be an attribute rather than uniform
 	gl.Uniform4f(ctx.loaded_uniforms["colour"].location, r, g, b, a)
 
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 3 * size_of(f32), 0)
-	gl.EnableVertexAttribArray(0)
 
 }
