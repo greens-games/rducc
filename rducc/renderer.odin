@@ -43,10 +43,10 @@ MAGENTA    :: Color{ 255, 0, 255, 255 }     // Magenta
 //TODO: We may want to create a struct for our vertices so we can more easily send more data to the GPU
 //I believe this mainly affects sending attributes to shaders, may also minorly affect the DrawCalls and BufferData but I don't 100% remember
 vertices_index_box := [?]f32 {
-	 1.,  1., 0.,
-	 1., -1., 0.,
-	-1., -1., 0.,
-	-1.,  1., 0.,
+	 1.0,  1.0, 0.0,
+	 1.0, -1.0, 0.0,
+	-1.0, -1.0, 0.0,
+	-1.0,  1.0, 0.0,
 }
 
 
@@ -142,7 +142,7 @@ renderer_background_clear :: proc(color: Color) {
 
 renderer_pixel :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	vertices := [?]f32 {
-		-1.,-1.,0.
+		-1.0,-1.0,0.0
 	}
 	indices := [?]f32 {
 		0
@@ -164,14 +164,14 @@ renderer_box :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	//TODO: This could be indices if we can figure out how to not get the errors?
 	vertices := [?]f32 {
-		 1.,  1., 0.,
-		 1., -1., 0.,
-		 1., -1., 0.,
-		-1., -1., 0.,
-		-1., -1., 0.,
-		-1.,  1., 0.,
-		-1.,  1., 0.,
-		 1.,  1., 0.,
+		 1.0,  1.0, 0.0,
+		 1.0, -1.0, 0.0,
+		 1.0, -1.0, 0.0,
+		-1.0, -1.0, 0.0,
+		-1.0, -1.0, 0.0,
+		-1.0,  1.0, 0.0,
+		-1.0,  1.0, 0.0,
+		 1.0,  1.0, 0.0,
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
 	renderer_mvp_apply(vert_info, frag_info)
@@ -179,26 +179,57 @@ renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	gl.DrawArrays(gl.LINES, 0, 8)
 }
 
-//NOTE: For polygons we need to define the vertices we are doing and adjust scaling based on that I think
-renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_pentagon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	vertices := [?]f32 {
-		 1.,  1., 0.,
-		 1., -1., 0.,
-		-1.,  1., 0.,
-		 1., -1., 0.,
-		-1., -1., 0.,
-		-1.,  1., 0.,
-		 1.,  1., 0.,
-		 1., -1., 0.,
-		-1.,  1., 0.,
+		-0.75, 1.0, 0.0,
+		 0.75, 1.0, 0.0,
+		 0.0, 0.0, 0.0,
+		-1.0, 0.0, 0.0,
+		 1.0, 0.0, 0.0,
+		 0.0,-1.0, 0.0,
+		 /* 1.0, -1.0, 0.0,
+		-1.0, -1.0, 0.0,
+		-1.0,  1.0, 0.0,
+		 1.0,  1.0, 0.0,
+		 1.0, -1.0, 0.0,
+		-1.0,  1.0, 0.0, */
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	renderer_mvp_apply(vert_info, frag_info)
+	renderer_colour_apply(frag_info)
+	/* renderer_mvp_apply(vert_info, frag_info) */
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 	gl.DrawArrays(gl.TRIANGLES, 0, 9)
 }
 
+//NOTE: For polygons we need to define the vertices we are doing and adjust scaling based on that I think
+renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+	vertices := [?]f32 {
+		 0.0,  1.0, 0.0,
+		-0.5,  0.0, 0.0,
+		 0.5,  0.0, 0.0,
+		 0.0,  1.0, 0.0,
+		 0.0, -1.0, 0.0,
+	}
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	renderer_colour_apply(frag_info)
+	/* renderer_mvp_apply(vert_info, frag_info) */
+	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	gl.DrawArrays(gl.TRIANGLES, 0, 6)
+	gl.DrawArrays(gl.LINES, 3, 2)
+}
+
 renderer_circle :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+
+}
+
+renderer_colour_apply :: proc(frag_info: Frag_Info) {
+	//TODO: do colour in separate function
+	r := f32(frag_info.colour.r)/255.
+	g := f32(frag_info.colour.g)/255.
+	b := f32(frag_info.colour.b)/255.
+	a := f32(frag_info.colour.a)/255.
+	//TODO: Colour can probably be an attribute rather than uniform
+	gl.Uniform4f(ctx.loaded_uniforms["colour"].location, r, g, b, a)
 
 }
 
@@ -217,13 +248,6 @@ renderer_mvp_apply :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	i *= s
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["transform"].location,1,false,&i[0,0])
 
-	//TODO: do colour in separate function
-	r := f32(frag_info.colour.r)/255.
-	g := f32(frag_info.colour.g)/255.
-	b := f32(frag_info.colour.b)/255.
-	a := f32(frag_info.colour.a)/255.
-	//TODO: Colour can probably be an attribute rather than uniform
-	gl.Uniform4f(ctx.loaded_uniforms["colour"].location, r, g, b, a)
 
 
 }

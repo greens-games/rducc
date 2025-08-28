@@ -51,7 +51,8 @@ main :: proc() {
 		}
 	}
 
-	run()
+	/* run() */
+	shape_test()
 }
 
 run :: proc() {
@@ -185,7 +186,7 @@ run :: proc() {
 			}
 		}
 
-		rducc.renderer_polygon({{50.,50.}, 32, 0.}, {rducc.BLUE})
+		rducc.renderer_pentagon({{50.,50.}, 32, 0.}, {rducc.BLUE})
 
 
 		//TC: CLEANUP
@@ -197,6 +198,23 @@ run :: proc() {
 			}
 		}
 		free_all()
+	}
+}
+
+shape_test :: proc() {
+	rducc.window_open(980,620,"RDUCC DEMO")
+	rducc.renderer_init()
+	rducc.shader_load("res/vert_single_shape.glsl", "res/frag_primitive.glsl")
+	click_cd_rate := 0.5
+	click_cd := 0.0
+	for !rducc.window_close() {
+		dt := rducc.time_delta_get()
+		click_cd -= dt
+		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) && click_cd <= 0 {
+			click_cd = click_cd_rate
+			
+		}
+		rducc.renderer_polygon({{50.,50.}, 32, 0.}, {rducc.BLUE})
 	}
 }
 
