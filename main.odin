@@ -1,5 +1,6 @@
 package main
 
+import "core:sys/posix"
 import "core:math/linalg"
 import "rducc"
 import "pducc"
@@ -51,8 +52,8 @@ main :: proc() {
 		}
 	}
 
-	/* run() */
-	shape_test()
+	run()
+	/* shape_test() */
 }
 
 run :: proc() {
@@ -65,9 +66,9 @@ run :: proc() {
 	guy: Entity
 	//TODO:Find a way to do "canonical" positioning (i.e position by meters and move m/s rather than pixels)
 	guy.pos = {f32(rducc.ctx.window_width)/2.,f32(rducc.ctx.window_height)/2.}
-	guy.scale = {16,32}
+	guy.scale = {16,16}
 	guy.collider.origin = guy.pos
-	guy.collider.scale = {16.,32.}
+	guy.collider.scale = {16.,16.}
 	guy.collider.kind = .RECT
 	guy.fire_rate = 0.5
 	entities[entity_count] = guy
@@ -172,21 +173,21 @@ run :: proc() {
 		//TC: RENDER
 		rducc.renderer_background_clear(rducc.GRAY)
 		for &bullet in bullets {
-			rducc.renderer_box({bullet.pos, bullet.scale, bullet.rotation}, {rducc.BLACK})
+			rducc.renderer_box({pos = bullet.pos, scale = bullet.scale, rotation = bullet.rotation}, {rducc.BLACK})
 			if debug_draw_colliders {
-				rducc.renderer_box_lines({bullet.pos, bullet.scale, bullet.rotation}, {rducc.GREEN})
+				rducc.renderer_box_lines({pos = bullet.pos, scale = bullet.scale, rotation = bullet.rotation}, {rducc.GREEN})
 			}
 		}
 
 		for idx in 0..<entity_count {
 			e := entities[idx]
-			rducc.renderer_box({e.pos, e.scale, e.rotation}, {rducc.BLUE})
+			rducc.renderer_box({pos = e.pos, scale = e.scale, rotation = e.rotation}, {rducc.BLUE})
 			if debug_draw_colliders {
-				rducc.renderer_box_lines({e.collider.origin, e.collider.scale, e.rotation}, {rducc.GREEN})
+				rducc.renderer_box_lines({pos = e.collider.origin, scale = e.collider.scale, rotation = e.rotation}, {rducc.GREEN})
 			}
 		}
 
-		rducc.renderer_pentagon({{50.,50.}, 32, 0.}, {rducc.BLUE})
+		rducc.renderer_circle_vertices({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE})
 
 
 		//TC: CLEANUP
@@ -214,7 +215,7 @@ shape_test :: proc() {
 			click_cd = click_cd_rate
 			
 		}
-		rducc.renderer_polygon({{50.,50.}, 32, 0.}, {rducc.BLUE})
+		rducc.renderer_circle_vertices({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE})
 	}
 }
 

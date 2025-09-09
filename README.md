@@ -5,13 +5,12 @@
 
 ## Current tasks
 - Renderer
-    - Draw polygons
     - Draw circle
 - Physics
-    - Polygon collisions
     - Circle collisions
         - Circle - Circle
         - Circle - Rect
+    - Polygon collisions
 - Game
     - Enemies
     - Weapons
@@ -25,6 +24,10 @@
     - Shaders
     - Textures
     - Gameplay code
+
+## Physics
+- Collision module is just for detecting if 2 objects are colliding
+- We want a module to apply different formulas depending on if 2 objects colliding and some properties about them
 
 ## Plans
 - Possibly use the renderer to build a game

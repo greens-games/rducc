@@ -1,6 +1,7 @@
 package rducc
 
 import "base:runtime"
+import "core:math"
 /*
 CONSIDER THIS THE renderer LAYER
 	- Should be abstracted away from the platform layer (i.e try to avoid using glfw.gl_set_proc_address)
@@ -53,11 +54,18 @@ vertices_index_box := [?]f32 {
 Vert_Info :: struct {
 	pos:      [2]f32,
 	scale:    [2]f32,
-	rotation: f32,
+	rotation:    f32,
+	radius:      f32,
 }
 
 Frag_Info :: struct {
 	colour: Color,
+}
+
+Vertex :: struct {
+	x: f32,
+	y: f32,
+	z: f32,
 }
 
 EBO, VAO, VBO: u32
@@ -68,6 +76,7 @@ renderer_init :: proc() {
 	gl.Enable(gl.DEBUG_OUTPUT)
 	gl.Enable(gl.DEBUG_OUTPUT_SYNCHRONOUS)
 	gl.DebugMessageCallback(debug_proc_t, {})
+	/* gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE) */
 	//Can add filters here
 	gl.DebugMessageControl(gl.DEBUG_SOURCE_API, gl.DEBUG_TYPE_ERROR, gl.DEBUG_SEVERITY_HIGH, 0, nil, gl.TRUE)
 	/* gl.DebugMessageControl(gl.DEBUG_SOURCE_API, gl.DEBUG_TYPE_ERROR, gl.DEBUG_SEVERITY_MEDIUM, 0, nil, gl.TRUE) */
@@ -149,14 +158,14 @@ renderer_pixel :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	}
 	/* gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(u32), &indices, gl.STATIC_DRAW) */
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	renderer_mvp_apply(vert_info, frag_info)
+	renderer_mvp_apply(vert_info)
 	gl.DrawArrays(gl.POINTS, 0, len(vertices))
 	/* gl.DrawElements(gl.TRIANGLES, 1, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 }
 
 renderer_box :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
-	renderer_mvp_apply(vert_info, frag_info)
+	renderer_mvp_apply(vert_info)
 	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 }
@@ -174,7 +183,7 @@ renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 		 1.0,  1.0, 0.0,
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	renderer_mvp_apply(vert_info, frag_info)
+	renderer_mvp_apply(vert_info)
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 	gl.DrawArrays(gl.LINES, 0, 8)
 }
@@ -218,8 +227,48 @@ renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	gl.DrawArrays(gl.LINES, 3, 2)
 }
 
-renderer_circle :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_circle_vertices :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+	vertices: [21]Vertex
+	vertices_temp := [5]Vertex {
+		{0.0,0.0,0.0},
+		{0.0,1.0,0.0},
+		{1.0,0.0,0.0},
+		{1.0,0.0,0.0},
+		{0.0,-1.0,0.0},
+	}
+	segments := 20
+	two_pi := 2.0 * math.PI
 
+	vertices[0] = {
+		vert_info.pos.x,
+		vert_info.pos.y,
+		0.0,
+	}
+
+	for i in 0..=segments 	{
+		circ_pos := f32(f64(i) * two_pi / f64(segments))
+		vertices[i].x = vert_info.pos.x + (vert_info.radius * math.cos_f32(circ_pos))
+		vertices[i].y = vert_info.pos.y + (vert_info.radius * math.sin_f32(circ_pos))
+		vertices[i].z = 0.0
+	}
+	
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_temp), &vertices_temp, gl.STATIC_DRAW) */
+	renderer_colour_apply(frag_info)
+	renderer_mvp_apply(vert_info)
+	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
+	/* gl.DrawArrays(gl.TRIANGLE_FAN, 0, 5) */
+}
+
+renderer_circle_shader :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+	//Rectangle vertices
+
+	//Load into buffer
+
+	//Load circle shader
+
+	//Draw
 }
 
 renderer_colour_apply :: proc(frag_info: Frag_Info) {
@@ -233,7 +282,7 @@ renderer_colour_apply :: proc(frag_info: Frag_Info) {
 
 }
 
-renderer_mvp_apply :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_mvp_apply :: proc(vert_info: Vert_Info) {
 
 	projection := glm.mat4Ortho3d(0.0, f32(ctx.window_width), 0.0, f32(ctx.window_height), -1.0, 1.0)
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location,1,false,&projection[0,0])
