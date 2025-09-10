@@ -188,28 +188,6 @@ renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	gl.DrawArrays(gl.LINES, 0, 8)
 }
 
-renderer_pentagon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
-	vertices := [?]f32 {
-		-0.75, 1.0, 0.0,
-		 0.75, 1.0, 0.0,
-		 0.0, 0.0, 0.0,
-		-1.0, 0.0, 0.0,
-		 1.0, 0.0, 0.0,
-		 0.0,-1.0, 0.0,
-		 /* 1.0, -1.0, 0.0,
-		-1.0, -1.0, 0.0,
-		-1.0,  1.0, 0.0,
-		 1.0,  1.0, 0.0,
-		 1.0, -1.0, 0.0,
-		-1.0,  1.0, 0.0, */
-	}
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	renderer_colour_apply(frag_info)
-	/* renderer_mvp_apply(vert_info, frag_info) */
-	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
-	gl.DrawArrays(gl.TRIANGLES, 0, 9)
-}
-
 //NOTE: For polygons we need to define the vertices we are doing and adjust scaling based on that I think
 renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	vertices := [?]f32 {
@@ -227,16 +205,37 @@ renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	gl.DrawArrays(gl.LINES, 3, 2)
 }
 
+renderer_polygon_sides :: proc(vert_info: Vert_Info, frag_info: Frag_Info, sides: i32) {
+	assert(sides < 20)
+	vertices: [20]Vertex
+	segments := sides
+	two_pi := 2.0 * math.PI
+
+	vertices[0] = {
+		vert_info.pos.x,
+		vert_info.pos.y,
+		0.0,
+	}
+
+	for i in 0..=segments 	{
+		circ_pos := f32(f64(i) * two_pi / f64(segments))
+		vertices[i].x = vert_info.pos.x + (vert_info.radius * math.cos_f32(circ_pos))
+		vertices[i].y = vert_info.pos.y + (vert_info.radius * math.sin_f32(circ_pos))
+		vertices[i].z = 0.0
+	}
+	
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_temp), &vertices_temp, gl.STATIC_DRAW) */
+	renderer_colour_apply(frag_info)
+	renderer_mvp_apply(vert_info)
+	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
+	/* gl.DrawArrays(gl.TRIANGLE_FAN, 0, 5) */
+}
+
 renderer_circle_vertices :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	vertices: [21]Vertex
-	vertices_temp := [5]Vertex {
-		{0.0,0.0,0.0},
-		{0.0,1.0,0.0},
-		{1.0,0.0,0.0},
-		{1.0,0.0,0.0},
-		{0.0,-1.0,0.0},
-	}
-	segments := 20
+	segments := len(vertices) - 1
 	two_pi := 2.0 * math.PI
 
 	vertices[0] = {

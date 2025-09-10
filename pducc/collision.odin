@@ -4,6 +4,7 @@ import "core:fmt"
 
 Collider_Kind :: enum {
 	RECT,
+	CIRCLE,
 }
 
 Collider :: struct {
@@ -24,7 +25,8 @@ rect_collision :: proc(a, b: Collider) -> bool {
 }
 
 circle_collision :: proc(a, b: Collider) -> bool {
-
+	dist_x := a.origin.x - b.origin.x
+	dist_y := a.origin.y - b.origin.y
 	return false
 }
 

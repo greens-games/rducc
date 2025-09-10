@@ -215,7 +215,7 @@ shape_test :: proc() {
 			click_cd = click_cd_rate
 			
 		}
-		rducc.renderer_circle_vertices({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE})
+		rducc.renderer_polygon_sides({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE}, 6)
 	}
 }
 
