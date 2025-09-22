@@ -210,7 +210,7 @@ run :: proc() {
 			}
 		}
 
-		rducc.renderer_circle_shader({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE})
+		/* rducc.renderer_circle_shader({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE}) */
 
 
 		//TC: CLEANUP

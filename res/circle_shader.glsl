@@ -18,6 +18,6 @@ void main()
 {
     vec2 st = gl_FragCoord.xy/u_resolution;
 	float pct = fill_circle(st);
-	colour *= pct;
-	FragColor =  colour;
+	vec4 final_colour = colour * pct;
+	FragColor =  final_colour;
 }

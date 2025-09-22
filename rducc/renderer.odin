@@ -169,6 +169,7 @@ renderer_pixel :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 }
 
 renderer_box :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+	program_load(Shader_Progams.PRIMITIVE)
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
 	renderer_mvp_apply(vert_info)
 	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
@@ -277,6 +278,7 @@ renderer_circle_shader :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
 	//Draw
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
+	program_load(Shader_Progams.PRIMITIVE)
 }
 
 renderer_sprite_load :: proc(f_name: cstring) {
