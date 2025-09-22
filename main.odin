@@ -7,9 +7,16 @@ import "pducc"
 import "core:fmt"
 import "core:math"
 import "core:mem"
+import "core:os"
 
+Entity_Kind :: enum {
+	PLAYER,
+	ENEMY,
+	WALL,
+}
 
 Entity :: struct {
+	kind:         Entity_Kind,
 	pos:          [2]f32,
 	scale:        [2]f32,
 	velocity:     [2]f32,
@@ -54,6 +61,7 @@ main :: proc() {
 
 	run()
 	/* shape_test() */
+	/* rducc.renderer_sprite_load("res/scuffed_percy.png") */
 }
 
 run :: proc() {
@@ -61,7 +69,12 @@ run :: proc() {
 	entity_count := 0
 	rducc.window_open(980,620,"RDUCC DEMO")
 	rducc.renderer_init()
+
 	rducc.shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
+	rducc.shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
+	rducc.shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
+
+	rducc.renderer_sprite_load("res/scuffed_percy.png")
 	bullets := make_dynamic_array([dynamic]Entity)
 	guy: Entity
 	//TODO:Find a way to do "canonical" positioning (i.e position by meters and move m/s rather than pixels)
@@ -71,6 +84,7 @@ run :: proc() {
 	guy.collider.scale = {16.,16.}
 	guy.collider.kind = .RECT
 	guy.fire_rate = 0.5
+	guy.kind = .PLAYER
 	entities[entity_count] = guy
 	entity_count += 1
 	curr_rotation: f32 = 0.
@@ -83,8 +97,10 @@ run :: proc() {
 		origin = enemy.pos,
 		scale  = enemy.scale,
 	}
+	enemy.kind = .ENEMY
 	entities[entity_count] = enemy
 	entity_count += 1
+
 
 	for !rducc.window_close() {
 		//NOTE: This porbably shouldn't stay find a better way to handle freeing bullets
@@ -181,13 +197,20 @@ run :: proc() {
 
 		for idx in 0..<entity_count {
 			e := entities[idx]
-			rducc.renderer_box({pos = e.pos, scale = e.scale, rotation = e.rotation}, {rducc.BLUE})
+			switch e.kind {
+			case .PLAYER:
+				rducc.renderer_sprite_draw({pos = e.pos, scale = e.scale, rotation = e.rotation}, {rducc.WHITE})
+			case.ENEMY:
+				rducc.renderer_box({pos = e.pos, scale = e.scale, rotation = e.rotation}, {rducc.BLUE})
+			case.WALL:
+				rducc.renderer_box({pos = e.pos, scale = e.scale, rotation = e.rotation}, {rducc.BLUE})
+			}
 			if debug_draw_colliders {
 				rducc.renderer_box_lines({pos = e.collider.origin, scale = e.collider.scale, rotation = e.rotation}, {rducc.GREEN})
 			}
 		}
 
-		rducc.renderer_circle_vertices({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE})
+		rducc.renderer_circle_shader({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE})
 
 
 		//TC: CLEANUP
@@ -215,7 +238,7 @@ shape_test :: proc() {
 			click_cd = click_cd_rate
 			
 		}
-		rducc.renderer_polygon_sides({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE}, 6)
+		rducc.renderer_circle_vertices({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE})
 	}
 }
 

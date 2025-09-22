@@ -1,7 +1,10 @@
 package rducc
 
+import "core:image"
 import "base:runtime"
 import "core:math"
+import stbi "vendor:stb/image"
+import "core:c"
 /*
 CONSIDER THIS THE renderer LAYER
 	- Should be abstracted away from the platform layer (i.e try to avoid using glfw.gl_set_proc_address)
@@ -43,11 +46,11 @@ MAGENTA    :: Color{ 255, 0, 255, 255 }     // Magenta
 
 //TODO: We may want to create a struct for our vertices so we can more easily send more data to the GPU
 //I believe this mainly affects sending attributes to shaders, may also minorly affect the DrawCalls and BufferData but I don't 100% remember
-vertices_index_box := [?]f32 {
-	 1.0,  1.0, 0.0,
-	 1.0, -1.0, 0.0,
-	-1.0, -1.0, 0.0,
-	-1.0,  1.0, 0.0,
+vertices_index_box := [?]Vertex {
+	{pos_coords = {1.0,  1.0, 0.0}},
+	{pos_coords = {1.0, -1.0, 0.0}},
+	{pos_coords = {-1.0, -1.0, 0.0}},
+	{pos_coords = {-1.0,  1.0, 0.0}},
 }
 
 
@@ -63,9 +66,8 @@ Frag_Info :: struct {
 }
 
 Vertex :: struct {
-	x: f32,
-	y: f32,
-	z: f32,
+	pos_coords:     [3]f32,
+	texture_coords: [2]f32,
 }
 
 EBO, VAO, VBO: u32
@@ -101,8 +103,11 @@ renderer_init :: proc() {
 	/* gl.BindBuffer(gl.ARRAY_BUFFER, 0) */
 	//NOTE: In the OpenGL and Odin examples they bind VertexArray first but for us we need to bind last unsure why
 	gl.BindVertexArray(VAO)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 3 * size_of(f32), 0)
+
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), 0)
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
 	gl.EnableVertexAttribArray(0)
+	gl.EnableVertexAttribArray(1) 
 }
 
 debug_proc_t :: proc "c" (source: u32, type: u32, id: u32, severity: u32, length: i32, message: cstring, userParam: rawptr) {
@@ -172,15 +177,15 @@ renderer_box :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 
 renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	//TODO: This could be indices if we can figure out how to not get the errors?
-	vertices := [?]f32 {
-		 1.0,  1.0, 0.0,
-		 1.0, -1.0, 0.0,
-		 1.0, -1.0, 0.0,
-		-1.0, -1.0, 0.0,
-		-1.0, -1.0, 0.0,
-		-1.0,  1.0, 0.0,
-		-1.0,  1.0, 0.0,
-		 1.0,  1.0, 0.0,
+	vertices := [?]Vertex {
+	{pos_coords = {1.0,  1.0, 0.0,}},
+	{pos_coords = {1.0, -1.0, 0.0}},
+	{pos_coords = {1.0, -1.0, 0.0}},
+	{pos_coords = {-1.0, -1.0, 0.0}},
+	{pos_coords = {-1.0, -1.0, 0.0}},
+	{pos_coords = {-1.0,  1.0, 0.0}},
+	{pos_coords = {-1.0,  1.0, 0.0}},
+	{pos_coords = {1.0,  1.0, 0.0}},
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
 	renderer_mvp_apply(vert_info)
@@ -212,16 +217,18 @@ renderer_polygon_sides :: proc(vert_info: Vert_Info, frag_info: Frag_Info, sides
 	two_pi := 2.0 * math.PI
 
 	vertices[0] = {
-		vert_info.pos.x,
-		vert_info.pos.y,
-		0.0,
+		pos_coords = {
+			vert_info.pos.x,
+			vert_info.pos.y,
+			0.0,
+		}
 	}
 
 	for i in 0..=segments 	{
 		circ_pos := f32(f64(i) * two_pi / f64(segments))
-		vertices[i].x = vert_info.pos.x + (vert_info.radius * math.cos_f32(circ_pos))
-		vertices[i].y = vert_info.pos.y + (vert_info.radius * math.sin_f32(circ_pos))
-		vertices[i].z = 0.0
+		vertices[i].pos_coords.x = vert_info.pos.x + (vert_info.radius * math.cos_f32(circ_pos))
+		vertices[i].pos_coords.y = vert_info.pos.y + (vert_info.radius * math.sin_f32(circ_pos))
+		vertices[i].pos_coords.z = 0.0
 	}
 	
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
@@ -239,16 +246,18 @@ renderer_circle_vertices :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	two_pi := 2.0 * math.PI
 
 	vertices[0] = {
-		vert_info.pos.x,
-		vert_info.pos.y,
-		0.0,
+		pos_coords = {
+			vert_info.pos.x,
+			vert_info.pos.y,
+			0.0,
+		}
 	}
 
 	for i in 0..=segments 	{
 		circ_pos := f32(f64(i) * two_pi / f64(segments))
-		vertices[i].x = vert_info.pos.x + (vert_info.radius * math.cos_f32(circ_pos))
-		vertices[i].y = vert_info.pos.y + (vert_info.radius * math.sin_f32(circ_pos))
-		vertices[i].z = 0.0
+		vertices[i].pos_coords.x = vert_info.pos.x + (vert_info.radius * math.cos_f32(circ_pos))
+		vertices[i].pos_coords.y = vert_info.pos.y + (vert_info.radius * math.sin_f32(circ_pos))
+		vertices[i].pos_coords.z = 0.0
 	}
 	
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
@@ -261,13 +270,56 @@ renderer_circle_vertices :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 }
 
 renderer_circle_shader :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
-	//Rectangle vertices
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
+	program_load(Shader_Progams.CIRCLE)
+	renderer_mvp_apply(vert_info)
 
-	//Load into buffer
-
-	//Load circle shader
-
+	gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
 	//Draw
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
+}
+
+renderer_sprite_load :: proc(f_name: cstring) {
+	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
+	height, width, channels_in_file: i32
+	stbi.set_flip_vertically_on_load(1)
+	data := stbi.load(f_name, &height, &width, &channels_in_file, 4)
+
+
+	texture_hndl: u32
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	gl.GenTextures(1, &texture_hndl)
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, height, width, 0, gl.RGBA, gl.UNSIGNED_BYTE, data)
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+}
+
+renderer_sprite_draw :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+	vertices := [?]Vertex {
+	//1
+	{pos_coords = {1.0,  1.0, 0.0,},
+	 texture_coords = {1.0, 1.0}},
+	{pos_coords = {1.0, -1.0, 0.0},
+	 texture_coords = {1.0, 0.0}},
+	{pos_coords = {-1.0,  1.0, 0.0},
+	 texture_coords = {0.0, 1.0}},
+	//2
+	{pos_coords = {1.0, -1.0, 0.0},
+	 texture_coords = {1.0, 0.0}},
+	{pos_coords = {-1.0, -1.0, 0.0},
+	 texture_coords = {0.0, 0.0}},
+	{pos_coords = {-1.0,  1.0, 0.0},
+	 texture_coords = {0.0, 1.0}},
+	}
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	program_load(Shader_Progams.TEXTURE)
+	renderer_mvp_apply(vert_info)
+	renderer_colour_apply(frag_info)
+	gl.DrawArrays(gl.TRIANGLES, 0, 6)
+	program_load(Shader_Progams.PRIMITIVE)
 }
 
 renderer_colour_apply :: proc(frag_info: Frag_Info) {
@@ -295,7 +347,8 @@ renderer_mvp_apply :: proc(vert_info: Vert_Info) {
 	i *= rot
 	i *= s
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["transform"].location,1,false,&i[0,0])
+}
 
-
-
+renderer_draw :: proc() {
+	//Call gl.DrawArrays to draw everything in the scene
 }
