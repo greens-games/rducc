@@ -137,9 +137,9 @@ MOUSE_BUTTON_RIGHT  = 1,
 MOUSE_BUTTON_MIDDLE = 2,
 }
 
+//TODO: WE NEED A PRESSED FUNCTION ALL THESE ARE CURRENTLY DOWN MEANING 1 PRESS IS MULTIPLE USES
 window_process_input :: proc() {
 	window_hndl := ctx.window_hndl
-
 }
 
 //TODO: we can maybe spin up a thread for reading input, which can write to a queue of key events on the ctx

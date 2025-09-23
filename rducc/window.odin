@@ -56,7 +56,7 @@ mouse_move_callback :: proc "c" (window: glfw.WindowHandle, x_pos, y_pos: f64) {
 	ctx.mouse_pos = {f32(x_pos), f32(ctx.window_height) - f32(y_pos)}
 }
 
-move_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: c.int){
+mouse_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: c.int){
 	context = runtime.default_context()
 }
 

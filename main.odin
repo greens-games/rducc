@@ -15,25 +15,27 @@ Entity_Kind :: enum {
 	WALL,
 }
 
+//TODO: Decide if I want to move to a grid based map system;
+//This would mainly be for positioning and not necessarily moving, we can also try to standardize distances
 Entity :: struct {
 	kind:         Entity_Kind,
 	pos:          [2]f32,
 	scale:        [2]f32,
 	velocity:     [2]f32,
 	direction:    [2]f32,
-	rotation:     f32,
-	fire_rate_cd: f32,
-	fire_rate:    f32,
-	bullet_range: f32,
-	to_free:      bool,
-	collider:     pducc.Collider,
+	rotation:        f32,
+	fire_rate_cd:    f32,
+	fire_rate:       f32,
+	bullet_range:    f32,
+	to_free:         bool,
+	collider:        pducc.Collider,
 }
 
 /* 
 curr_rotation = math.to_degrees(math.atan2((game_mem.player.y ) - m_pos.y, (game_mem.player.x ) - m_pos.x))
 */
 
-debug_draw_colliders := true
+debug_draw_colliders := false
 
 //TODO: Add hot reloading
 main :: proc() {
@@ -210,7 +212,8 @@ run :: proc() {
 			}
 		}
 
-		/* rducc.renderer_circle_shader({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE}) */
+		rducc.renderer_circle_shader({pos = {0.,0.}, scale = 320, rotation = 0., radius = 32.0}, {rducc.BLUE})
+		rducc.renderer_circle_vertices({pos = {50.,0.}, rotation = 0., radius = 16.0}, {rducc.BLUE})
 
 
 		//TC: CLEANUP

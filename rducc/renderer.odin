@@ -172,6 +172,7 @@ renderer_box :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	program_load(Shader_Progams.PRIMITIVE)
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
 	renderer_mvp_apply(vert_info)
+	renderer_colour_apply(frag_info)
 	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 }
@@ -242,38 +243,41 @@ renderer_polygon_sides :: proc(vert_info: Vert_Info, frag_info: Frag_Info, sides
 }
 
 renderer_circle_vertices :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+	_vert_info := vert_info
+	_vert_info.scale = vert_info.radius
 	vertices: [21]Vertex
 	segments := len(vertices) - 1
 	two_pi := 2.0 * math.PI
 
 	vertices[0] = {
 		pos_coords = {
-			vert_info.pos.x,
-			vert_info.pos.y,
+			0.0,
+			0.0,
 			0.0,
 		}
 	}
 
 	for i in 0..=segments 	{
 		circ_pos := f32(f64(i) * two_pi / f64(segments))
-		vertices[i].pos_coords.x = vert_info.pos.x + (vert_info.radius * math.cos_f32(circ_pos))
-		vertices[i].pos_coords.y = vert_info.pos.y + (vert_info.radius * math.sin_f32(circ_pos))
+		vertices[i].pos_coords.x = 0.0 + (1.0 * math.cos_f32(circ_pos))
+		vertices[i].pos_coords.y = 0.0 + (1.0 * math.sin_f32(circ_pos))
 		vertices[i].pos_coords.z = 0.0
 	}
 	
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_temp), &vertices_temp, gl.STATIC_DRAW) */
 	renderer_colour_apply(frag_info)
-	renderer_mvp_apply(vert_info)
-	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	renderer_mvp_apply(_vert_info)
 	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
-	/* gl.DrawArrays(gl.TRIANGLE_FAN, 0, 5) */
 }
 
+//TODO: What is happening here?? Appears the shader is off centre for some reason we need to figure out
 renderer_circle_shader :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
+	_vert_info := vert_info
+	_vert_info.scale = vert_info.radius
 	program_load(Shader_Progams.CIRCLE)
-	renderer_mvp_apply(vert_info)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
+	renderer_mvp_apply(_vert_info)
+	renderer_colour_apply(frag_info)
 
 	gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
 	//Draw
