@@ -1,6 +1,8 @@
 package rducc
 
+import "core:fmt"
 import "vendor:glfw"
+import "base:runtime"
 
 Key :: enum {
 	KEY_SPACE         = 32,
@@ -128,13 +130,25 @@ Key :: enum {
 	KEY_RIGHT_CONTROL = 345,
 	KEY_RIGHT_ALT     = 346,
 	KEY_RIGHT_SUPER   = 347,
-	KEY_MENU          = 348
+	KEY_MENU          = 348,
+	COUNT             = 349,
 }
 
 Mouse_Button :: enum {
-MOUSE_BUTTON_LEFT   = 0,
-MOUSE_BUTTON_RIGHT  = 1,
-MOUSE_BUTTON_MIDDLE = 2,
+	MOUSE_BUTTON_LEFT   = 0,
+	MOUSE_BUTTON_RIGHT  = 1,
+	MOUSE_BUTTON_MIDDLE = 2,
+}
+
+Input_Kind :: enum u8 {
+	UP,
+	DOWN,
+	REPEAT,
+}
+
+Input_Action :: struct {
+	prev_state: Input_Kind,
+	curr_state: Input_Kind,
 }
 
 //TODO: WE NEED A PRESSED FUNCTION ALL THESE ARE CURRENTLY DOWN MEANING 1 PRESS IS MULTIPLE USES
@@ -148,10 +162,32 @@ window_is_key_down :: proc(key: Key) -> bool {
 	return glfw.GetKey(ctx.window_hndl, i32(key)) == glfw.PRESS
 }
 
+window_is_key_pressed :: proc(key: Key) {
+	key_state := ctx.key_input_queue[key]
+	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button
+	if key_state.curr_state == .UP && key_state.prev_state == .DOWN {
+		fmt.println("PRESSED KEY", key)
+		 ctx.key_input_queue[key].prev_state = .UP
+	}
+}
+
 window_is_mouse_button_down :: proc(mouse_button: Mouse_Button) -> bool {
 	return glfw.GetMouseButton(ctx.window_hndl, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
 }
 
 window_mouse_pos :: proc() -> [2]f32{
 	return ctx.mouse_pos
+}
+
+mouse_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: i32){
+	context = runtime.default_context()
+}
+
+key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
+	/* if key == glfw.KEY_ESCAPE && action == glfw.PRESS {
+		glfw.SetWindowShouldClose(ctx.window_hndl, true)
+	} */
+	context = runtime.default_context()
+	ctx.key_input_queue[key].prev_state = ctx.key_input_queue[key].curr_state
+	ctx.key_input_queue[key].curr_state = Input_Kind(action)
 }

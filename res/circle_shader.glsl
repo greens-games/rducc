@@ -16,7 +16,8 @@ fill_circle(in vec2 st) {
 
 void main()
 {
-    vec2 st = gl_FragCoord.xy/u_resolution.xy;
+	//NOTE:THIS IS SO CLOSE TO BEING CORRECT IT'S JUST NOT IN THE RIGHT POSITION OR GETTING BIGGER
+    vec2 st = pos.xy;
 	float pct = fill_circle(st);
 	vec4 final_colour = colour * pct;
 	FragColor =  final_colour;

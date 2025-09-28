@@ -15,11 +15,21 @@ Entity_Kind :: enum {
 	WALL,
 }
 
+ROWS :: 20
+COLS :: 20
+
+Game_Context :: struct {
+	entities:     [100]Entity,
+	entity_count: i32,
+	grid:         [ROWS][COLS]Cell,
+}
+
 //TODO: Decide if I want to move to a grid based map system;
 //This would mainly be for positioning and not necessarily moving, we can also try to standardize distances
 Entity :: struct {
-	kind:         Entity_Kind,
-	pos:          [2]f32,
+	id:              u32,
+	kind:            Entity_Kind,
+	pos:          [3]f32,
 	scale:        [2]f32,
 	velocity:     [2]f32,
 	direction:    [2]f32,
@@ -31,10 +41,16 @@ Entity :: struct {
 	collider:        pducc.Collider,
 }
 
+Cell :: struct {
+	occupiers: [5]u32,
+}
+
+
 /* 
 curr_rotation = math.to_degrees(math.atan2((game_mem.player.y ) - m_pos.y, (game_mem.player.x ) - m_pos.x))
 */
 
+SPRITE_SCALE :: [2]f32{32.0, 32.0}
 debug_draw_colliders := false
 
 //TODO: Add hot reloading
@@ -67,41 +83,41 @@ main :: proc() {
 }
 
 run :: proc() {
-	entities: [1024]Entity
-	entity_count := 0
+	game_ctx: Game_Context
 	rducc.window_open(980,620,"RDUCC DEMO")
 	rducc.renderer_init()
 
 	rducc.shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
 	rducc.shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 	rducc.shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
+	rducc.shader_load("res/vert_2d.glsl", "res/grid.glsl")
 
 	rducc.renderer_sprite_load("res/scuffed_percy.png")
 	bullets := make_dynamic_array([dynamic]Entity)
 	guy: Entity
-	//TODO:Find a way to do "canonical" positioning (i.e position by meters and move m/s rather than pixels)
-	guy.pos = {f32(rducc.ctx.window_width)/2.,f32(rducc.ctx.window_height)/2.}
-	guy.scale = {16,16}
-	guy.collider.origin = guy.pos
-	guy.collider.scale = {16.,16.}
+	//TODO:Find a way to do "canonical" positioning (i.e position by meters and move m/s rather than pixels)game_ctx.
+	guy.pos = {f32(rducc.ctx.window_width)/2.,f32(rducc.ctx.window_height)/2., 0.0}
+	guy.scale = SPRITE_SCALE
+	guy.collider.origin = guy.pos.xy
+	guy.collider.scale = SPRITE_SCALE
 	guy.collider.kind = .RECT
 	guy.fire_rate = 0.5
 	guy.kind = .PLAYER
-	entities[entity_count] = guy
-	entity_count += 1
+	game_ctx.entities[game_ctx.entity_count] = guy
+	game_ctx.entity_count += 1
 	curr_rotation: f32 = 0.
-	player := &entities[0]
+	player := &game_ctx.entities[0]
 
 	enemy: Entity
-	enemy.pos = {150.,150.}
-	enemy.scale = {48,48}
+	enemy.pos = {150.,150., 0.0}
+	enemy.scale = SPRITE_SCALE
 	enemy.collider = {
-		origin = enemy.pos,
+		origin = enemy.pos.xy,
 		scale  = enemy.scale,
 	}
 	enemy.kind = .ENEMY
-	entities[entity_count] = enemy
-	entity_count += 1
+	game_ctx.entities[game_ctx.entity_count] = enemy
+	game_ctx.entity_count += 1
 
 
 	for !rducc.window_close() {
@@ -118,15 +134,17 @@ run :: proc() {
 
 		//TC: INPUT
 		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) && player.fire_rate_cd <= 0 {
+			//TODO: We need a better way to handle bullets that doesn't allocate memory every time we click
+			//Because append() will allocate memory
 			bullet: Entity
 			bullet.pos = player.pos
 			bullet.scale = {8,8}
 			bullet.rotation = player.rotation
 			bullet.collider = {
-				origin = bullet.pos,
+				origin = bullet.pos.xy,
 				scale = bullet.scale,
 			}
-			dist: [2]f32 = m_pos - player.pos
+			dist: [2]f32 = m_pos - player.pos.xy
 			bullet.direction = linalg.vector_normalize(dist)
 			append(&bullets, bullet)
 			player.fire_rate_cd = player.fire_rate
@@ -149,16 +167,10 @@ run :: proc() {
 		}
 
 		// TC: PHYSICS
-
-		r_matrix := matrix[2, 2]f32 {
-			math.cos(curr_rotation_degrees), -math.sin(curr_rotation_degrees),
-			math.sin(curr_rotation_degrees),  math.cos(curr_rotation_degrees)
-		}
-
 		for &bullet in bullets {
 			bullet.velocity += bullet.direction * 250. * f32(dt)
-			for idx in 1..<entity_count{
-				e := entities[idx]
+			for idx in 1..<game_ctx.entity_count{
+				e := game_ctx.entities[idx]
 				if pducc.rect_collision({
 					origin = bullet.collider.origin + bullet.velocity,
 					scale = bullet.collider.scale
@@ -167,7 +179,8 @@ run :: proc() {
 					bullet.to_free = true
 				}
 			}
-			bullet.pos += bullet.velocity
+			bullet.pos.x += bullet.velocity.x
+			bullet.pos.y += bullet.velocity.y
 			bullet.collider.origin += bullet.velocity
 			bullet.velocity = {}
 			if bullet.pos.x > f32(rducc.window_width()) || bullet.pos.x < 0. {
@@ -181,39 +194,41 @@ run :: proc() {
 			origin = player.collider.origin + player.velocity, 
 			scale = player.collider.scale
 			}, 
-			entities[1].collider) {
+			game_ctx.entities[1].collider) {
 			player.velocity = {}
 		}
-		player.pos += player.velocity
+		player.pos.x += player.velocity.x
+		player.pos.y += player.velocity.y
 		player.collider.origin += player.velocity
 		player.velocity = {}
 
 		//TC: RENDER
 		rducc.renderer_background_clear(rducc.GRAY)
 		for &bullet in bullets {
-			rducc.renderer_box({pos = bullet.pos, scale = bullet.scale, rotation = bullet.rotation}, {rducc.BLACK})
+			rducc.renderer_box(bullet.pos, bullet.scale, bullet.rotation, rducc.BLACK)
 			if debug_draw_colliders {
-				rducc.renderer_box_lines({pos = bullet.pos, scale = bullet.scale, rotation = bullet.rotation}, {rducc.GREEN})
+				rducc.renderer_box_lines(bullet.pos, bullet.scale, bullet.rotation, rducc.GREEN)
 			}
 		}
 
-		for idx in 0..<entity_count {
-			e := entities[idx]
+		for idx in 0..<game_ctx.entity_count {
+			e := game_ctx.entities[idx]
 			switch e.kind {
 			case .PLAYER:
-				rducc.renderer_sprite_draw({pos = e.pos, scale = e.scale, rotation = e.rotation}, {rducc.WHITE})
+				rducc.renderer_sprite_draw(e.pos, e.scale, e.rotation, rducc.WHITE)
 			case.ENEMY:
-				rducc.renderer_box({pos = e.pos, scale = e.scale, rotation = e.rotation}, {rducc.BLUE})
+				rducc.renderer_box(e.pos, e.scale, e.rotation, rducc.BLUE)
 			case.WALL:
-				rducc.renderer_box({pos = e.pos, scale = e.scale, rotation = e.rotation}, {rducc.BLUE})
+				rducc.renderer_box(e.pos, e.scale, e.rotation, rducc.BLUE)
 			}
 			if debug_draw_colliders {
-				rducc.renderer_box_lines({pos = e.collider.origin, scale = e.collider.scale, rotation = e.rotation}, {rducc.GREEN})
+				rducc.renderer_box_lines({e.collider.origin.x, e.collider.origin.y, 0.0}, e.collider.scale, e.rotation, rducc.GREEN)
 			}
 		}
 
-		rducc.renderer_circle_shader({pos = {0.,0.}, scale = 320, rotation = 0., radius = 32.0}, {rducc.BLUE})
-		rducc.renderer_circle_vertices({pos = {50.,0.}, rotation = 0., radius = 16.0}, {rducc.BLUE})
+		rducc.renderer_circle_vertices({50.,0., 0.0}, 16.0, 0., rducc.BLUE)
+		rducc.renderer_circle_shader({0.,0.,0.0}, {32.0, 32.0}, 0., rducc.BLUE)
+		rducc.renderer_grid_draw()
 
 
 		//TC: CLEANUP
@@ -241,7 +256,6 @@ shape_test :: proc() {
 			click_cd = click_cd_rate
 			
 		}
-		rducc.renderer_circle_vertices({pos = {0.,0.}, scale = 32, rotation = 0., radius = 1.0}, {rducc.BLUE})
 	}
 }
 

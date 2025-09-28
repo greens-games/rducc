@@ -7,6 +7,7 @@ Shader_Progams :: enum u8 {
 	PRIMITIVE,
 	TEXTURE,
 	CIRCLE,
+	GRID,
 }
 
 Shader_Progam :: struct {
@@ -18,17 +19,21 @@ Context :: struct {
 	window_hndl:          glfw.WindowHandle,
 	window_width:         i32, 
 	window_height:        i32,
+
+	//NOTE: Default shaders to renderer uses internally
 	program_cache:        [10]u32,
-	loaded_program:       u32,
-	loaded_uniforms:      gl.Uniforms,
 	shader_cache:         [10]Shader_Progam,
 	shader_cache_count:   u32,
-	gl_ebo:               u32,
-	gl_vbo:               u32,
-	gl_vao:               u32,
+	loaded_program:       u32,
+	loaded_uniforms:      gl.Uniforms,
+
 	time:                 f64,
 	mouse_pos:            [2]f32,
 	indices:              []u32,
+	key_input_queue:      [u32(Key.COUNT)]Input_Action,
+
+	//NOTE: This should be removed
+	camera:               Camera,
 }
 
 //TODO: This probably shouldn't be a static global, maybe make it a pointer you can pass around when needed on init?

@@ -1,5 +1,6 @@
 package rducc
 
+import "core:container/lru"
 import "core:image"
 import "base:runtime"
 import "core:math"
@@ -16,33 +17,33 @@ import "vendor:glfw"
 import gl "vendor:OpenGL"
 import glm "core:math/linalg/glsl"
 import "core:fmt"
-Color :: distinct [4]int
+Colour :: distinct [4]int
 //NOTE: These are ripped straight from Raylib could probably do something else if we wanted
-LIGHTGRAY  :: Color{ 200, 200, 200, 255 }   // Light Gray
-GRAY       :: Color{ 130, 130, 130, 255 }   // Gray
-DARKGRAY   :: Color{ 80, 80, 80, 255 }      // Dark Gray
-YELLOW     :: Color{ 253, 249, 0, 255 }     // Yellow
-GOLD       :: Color{ 255, 203, 0, 255 }     // Gold
-ORANGE     :: Color{ 255, 161, 0, 255 }     // Orange
-PINK       :: Color{ 255, 109, 194, 255 }   // Pink
-RED        :: Color{ 230, 41, 55, 255 }     // Red
-MAROON     :: Color{ 190, 33, 55, 255 }     // Maroon
-GREEN      :: Color{ 0, 228, 48, 255 }      // Green
-LIME       :: Color{ 0, 158, 47, 255 }      // Lime
-DARKGREEN  :: Color{ 0, 117, 44, 255 }      // Dark Green
-SKYBLUE    :: Color{ 102, 191, 255, 255 }   // Sky Blue
-BLUE       :: Color{ 0, 121, 241, 255 }     // Blue
-DARKBLUE   :: Color{ 0, 82, 172, 255 }      // Dark Blue
-PURPLE     :: Color{ 200, 122, 255, 255 }   // Purple
-VIOLET     :: Color{ 135, 60, 190, 255 }    // Violet
-DARKPURPLE :: Color{ 112, 31, 126, 255 }    // Dark Purple
-BEIGE      :: Color{ 211, 176, 131, 255 }   // Beige
-BROWN      :: Color{ 127, 106, 79, 255 }    // Brown
-DARKBROWN  :: Color{ 76, 63, 47, 255 }      // Dark Brown
-WHITE      :: Color{ 255, 255, 255, 255 }   // White
-BLACK      :: Color{ 0, 0, 0, 255 }         // Black
-BLANK      :: Color{ 0, 0, 0, 0 }           // Blank (Transparent)
-MAGENTA    :: Color{ 255, 0, 255, 255 }     // Magenta
+LIGHTGRAY  :: Colour{ 200, 200, 200, 255 }   // Light Gray
+GRAY       :: Colour{ 130, 130, 130, 255 }   // Gray
+DARKGRAY   :: Colour{ 80, 80, 80, 255 }      // Dark Gray
+YELLOW     :: Colour{ 253, 249, 0, 255 }     // Yellow
+GOLD       :: Colour{ 255, 203, 0, 255 }     // Gold
+ORANGE     :: Colour{ 255, 161, 0, 255 }     // Orange
+PINK       :: Colour{ 255, 109, 194, 255 }   // Pink
+RED        :: Colour{ 230, 41, 55, 255 }     // Red
+MAROON     :: Colour{ 190, 33, 55, 255 }     // Maroon
+GREEN      :: Colour{ 0, 228, 48, 255 }      // Green
+LIME       :: Colour{ 0, 158, 47, 255 }      // Lime
+DARKGREEN  :: Colour{ 0, 117, 44, 255 }      // Dark Green
+SKYBLUE    :: Colour{ 102, 191, 255, 255 }   // Sky Blue
+BLUE       :: Colour{ 0, 121, 241, 255 }     // Blue
+DARKBLUE   :: Colour{ 0, 82, 172, 255 }      // Dark Blue
+PURPLE     :: Colour{ 200, 122, 255, 255 }   // Purple
+VIOLET     :: Colour{ 135, 60, 190, 255 }    // Violet
+DARKPURPLE :: Colour{ 112, 31, 126, 255 }    // Dark Purple
+BEIGE      :: Colour{ 211, 176, 131, 255 }   // Beige
+BROWN      :: Colour{ 127, 106, 79, 255 }    // Brown
+DARKBROWN  :: Colour{ 76, 63, 47, 255 }      // Dark Brown
+WHITE      :: Colour{ 255, 255, 255, 255 }   // White
+BLACK      :: Colour{ 0, 0, 0, 255 }         // Black
+BLANK      :: Colour{ 0, 0, 0, 0 }           // Blank (Transparent)
+MAGENTA    :: Colour{ 255, 0, 255, 255 }     // Magenta
 
 //TODO: We may want to create a struct for our vertices so we can more easily send more data to the GPU
 //I believe this mainly affects sending attributes to shaders, may also minorly affect the DrawCalls and BufferData but I don't 100% remember
@@ -62,7 +63,7 @@ Vert_Info :: struct {
 }
 
 Frag_Info :: struct {
-	colour: Color,
+	colour: Colour,
 }
 
 Vertex :: struct {
@@ -145,7 +146,7 @@ debug_proc_t :: proc "c" (source: u32, type: u32, id: u32, severity: u32, length
 
 
 //NOTE: This is exactly how raylib does their ClearBackground logic
-renderer_background_clear :: proc(color: Color) {
+renderer_background_clear :: proc(color: Colour) {
 	r := f32(color.r)/255.
 	g := f32(color.g)/255.
 	b := f32(color.b)/255.
@@ -154,7 +155,7 @@ renderer_background_clear :: proc(color: Color) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
-renderer_pixel :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 	vertices := [?]f32 {
 		-1.0,-1.0,0.0
 	}
@@ -163,21 +164,21 @@ renderer_pixel :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	}
 	/* gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(u32), &indices, gl.STATIC_DRAW) */
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	renderer_mvp_apply(vert_info)
+	renderer_mvp_apply(pos)
 	gl.DrawArrays(gl.POINTS, 0, len(vertices))
 	/* gl.DrawElements(gl.TRIANGLES, 1, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 }
 
-renderer_box :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	program_load(Shader_Progams.PRIMITIVE)
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
-	renderer_mvp_apply(vert_info)
-	renderer_colour_apply(frag_info)
+	renderer_mvp_apply(pos, scale, rotation)
+	renderer_colour_apply(colour)
 	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 }
 
-renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	//TODO: This could be indices if we can figure out how to not get the errors?
 	vertices := [?]Vertex {
 	{pos_coords = {1.0,  1.0, 0.0,}},
@@ -190,13 +191,14 @@ renderer_box_lines :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	{pos_coords = {1.0,  1.0, 0.0}},
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	renderer_mvp_apply(vert_info)
+	renderer_mvp_apply(pos, scale, rotation)
+	renderer_colour_apply(colour)
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 	gl.DrawArrays(gl.LINES, 0, 8)
 }
 
 //NOTE: For polygons we need to define the vertices we are doing and adjust scaling based on that I think
-renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_polygon :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	vertices := [?]f32 {
 		 0.0,  1.0, 0.0,
 		-0.5,  0.0, 0.0,
@@ -205,14 +207,14 @@ renderer_polygon :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 		 0.0, -1.0, 0.0,
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	renderer_colour_apply(frag_info)
+	renderer_colour_apply(colour)
 	/* renderer_mvp_apply(vert_info, frag_info) */
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 	gl.DrawArrays(gl.TRIANGLES, 0, 6)
 	gl.DrawArrays(gl.LINES, 3, 2)
 }
 
-renderer_polygon_sides :: proc(vert_info: Vert_Info, frag_info: Frag_Info, sides: i32) {
+renderer_polygon_sides :: proc(pos: [3]f32, scale: [2]f32, sides: i32, rotation: f32 = 0.0, colour := PINK) {
 	assert(sides < 20)
 	vertices: [20]Vertex
 	segments := sides
@@ -220,31 +222,29 @@ renderer_polygon_sides :: proc(vert_info: Vert_Info, frag_info: Frag_Info, sides
 
 	vertices[0] = {
 		pos_coords = {
-			vert_info.pos.x,
-			vert_info.pos.y,
+			pos.x,
+			pos.y,
 			0.0,
 		}
 	}
 
 	for i in 0..=segments 	{
 		circ_pos := f32(f64(i) * two_pi / f64(segments))
-		vertices[i].pos_coords.x = vert_info.pos.x + (vert_info.radius * math.cos_f32(circ_pos))
-		vertices[i].pos_coords.y = vert_info.pos.y + (vert_info.radius * math.sin_f32(circ_pos))
+		vertices[i].pos_coords.x = pos.x + (scale.x * math.cos_f32(circ_pos))
+		vertices[i].pos_coords.y = pos.y + (scale.y * math.sin_f32(circ_pos))
 		vertices[i].pos_coords.z = 0.0
 	}
 	
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
 	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_temp), &vertices_temp, gl.STATIC_DRAW) */
-	renderer_colour_apply(frag_info)
-	renderer_mvp_apply(vert_info)
+	renderer_colour_apply(colour)
+	renderer_mvp_apply(pos, scale, rotation)
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
 	/* gl.DrawArrays(gl.TRIANGLE_FAN, 0, 5) */
 }
 
-renderer_circle_vertices :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
-	_vert_info := vert_info
-	_vert_info.scale = vert_info.radius
+renderer_circle_vertices :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	vertices: [21]Vertex
 	segments := len(vertices) - 1
 	two_pi := 2.0 * math.PI
@@ -265,21 +265,19 @@ renderer_circle_vertices :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	}
 	
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	renderer_colour_apply(frag_info)
-	renderer_mvp_apply(_vert_info)
+	renderer_colour_apply(colour)
+	renderer_mvp_apply(pos, radius, rotation)
 	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
 }
 
 //TODO: What is happening here?? Appears the shader is off centre for some reason we need to figure out
-renderer_circle_shader :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
-	_vert_info := vert_info
-	_vert_info.scale = vert_info.radius
+renderer_circle_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	program_load(Shader_Progams.CIRCLE)
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
-	renderer_mvp_apply(_vert_info)
-	renderer_colour_apply(frag_info)
+	renderer_mvp_apply(pos, radius, rotation)
+	renderer_colour_apply(colour)
 
-	gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
+	//gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
 	//Draw
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 	program_load(Shader_Progams.PRIMITIVE)
@@ -303,7 +301,7 @@ renderer_sprite_load :: proc(f_name: cstring) {
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 }
 
-renderer_sprite_draw :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
+renderer_sprite_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	vertices := [?]Vertex {
 	//1
 	{pos_coords = {1.0,  1.0, 0.0,},
@@ -322,33 +320,46 @@ renderer_sprite_draw :: proc(vert_info: Vert_Info, frag_info: Frag_Info) {
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
 	program_load(Shader_Progams.TEXTURE)
-	renderer_mvp_apply(vert_info)
-	renderer_colour_apply(frag_info)
+	renderer_mvp_apply(pos, scale, rotation)
+	renderer_colour_apply(colour)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6)
 	program_load(Shader_Progams.PRIMITIVE)
 }
 
-renderer_colour_apply :: proc(frag_info: Frag_Info) {
+renderer_grid_draw :: proc(colour := PINK) {
+	program_load(Shader_Progams.GRID)
+	renderer_colour_apply(colour)
+	gl.Uniform1f(ctx.loaded_uniforms["size"].location, 160.0)
+	gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
+	renderer_colour_apply(colour)
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
+	program_load(Shader_Progams.PRIMITIVE)
+}
+
+renderer_colour_apply :: proc(colour: Colour) {
 	//TODO: do colour in separate function
-	r := f32(frag_info.colour.r)/255.
-	g := f32(frag_info.colour.g)/255.
-	b := f32(frag_info.colour.b)/255.
-	a := f32(frag_info.colour.a)/255.
+	r := f32(colour.r)/255.
+	g := f32(colour.g)/255.
+	b := f32(colour.b)/255.
+	a := f32(colour.a)/255.
 	//TODO: Colour can probably be an attribute rather than uniform
 	gl.Uniform4f(ctx.loaded_uniforms["colour"].location, r, g, b, a)
 
 }
 
-renderer_mvp_apply :: proc(vert_info: Vert_Info) {
+renderer_mvp_apply :: proc(pos: [3]f32, scale := [2]f32{1.0,1.0}, rotation: f32 = 0.0) {
 
-	projection := glm.mat4Ortho3d(0.0, f32(ctx.window_width), 0.0, f32(ctx.window_height), -1.0, 1.0)
+	camera_scale := ctx.camera.zoom > 0.0 ? ctx.camera.zoom : 1.0
+	//TODO: Apply zoom to projection matrix
+	projection := glm.mat4Ortho3d(0.0, f32(ctx.window_width)/camera_scale, 0.0, f32(ctx.window_height)/camera_scale, -1.0, 1.0)
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location,1,false,&projection[0,0])
 
-	adjusted_scale := [3]f32{vert_info.scale.x/2., vert_info.scale.y/2., 0.}
+	adjusted_scale := [3]f32{scale.x/2., scale.y/2., 0.}
 	i := glm.identity(glm.mat4)
-	t := glm.mat4Translate({vert_info.pos.x + adjusted_scale.x,vert_info.pos.y + adjusted_scale.y, 0.})
-	s := glm.mat4Scale({vert_info.scale.x/2.,vert_info.scale.y/2.,1.0})
-	rot := glm.mat4Rotate({0.0,0.0,1.0}, glm.radians(vert_info.rotation))
+	t := glm.mat4Translate({pos.x + adjusted_scale.x,pos.y + adjusted_scale.y, 0.})
+	s := glm.mat4Scale({scale.x/2.,scale.y/2.,1.0})
+	rot := glm.mat4Rotate({0.0,0.0,1.0}, glm.radians(rotation))
 	i *= t
 	i *= rot
 	i *= s

@@ -1,5 +1,6 @@
 package rducc
 
+import "core:math"
 /*
 CONSIDER THIS THE PLATFORM LAYER
 	- Current just sets up the window and checks if it should close it
@@ -38,7 +39,8 @@ window_open :: proc(window_width, window_height: i32, name: cstring) {
 	/* glfw.SetInputMode(window_handle, glfw.CURSOR, glfw.CURSOR_DISABLED) */
 	glfw.SetFramebufferSizeCallback(window_handle, resize_callback)
 	glfw.SetCursorPosCallback(window_handle, mouse_move_callback)
-	/* glfw.SetMouseButtonCallback(window_handle, move_button_callback) */
+	glfw.SetKeyCallback(window_handle, key_callback)
+	glfw.SetScrollCallback(window_handle, mouse_scroll_callback)
 
 	ctx.window_width = window_width
 	ctx.window_height = window_height
@@ -56,8 +58,11 @@ mouse_move_callback :: proc "c" (window: glfw.WindowHandle, x_pos, y_pos: f64) {
 	ctx.mouse_pos = {f32(x_pos), f32(ctx.window_height) - f32(y_pos)}
 }
 
-mouse_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: c.int){
+mouse_scroll_callback :: proc "c" (window: glfw.WindowHandle, x_offset, y_offset: f64) {
 	context = runtime.default_context()
+	if ctx.camera.zoom > 0.0 {
+		ctx.camera.zoom = math.max(1.0, ctx.camera.zoom + f32(y_offset))
+	}
 }
 
 window_height :: proc() -> i32 {
@@ -80,6 +85,8 @@ window_close :: proc() -> bool {
 		glfw.SetWindowShouldClose(ctx.window_hndl, true)
 	}
 
+	//TODO: We should probably move this to an explicit call that also does batch rendering
+	//rducc.commit or something
 	glfw.PollEvents()
 	glfw.SwapBuffers(ctx.window_hndl)
 	return bool(glfw.WindowShouldClose(ctx.window_hndl))

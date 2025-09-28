@@ -5,27 +5,32 @@
 
 ## Current tasks
 - Renderer
-    - Draw circle
+    - Draw grid
+    - Camera
+    - Batch rendering
+    - Multiple textures (Texture atlas to start?)
 - Physics
     - Circle collisions
         - Circle - Circle
         - Circle - Rect
-    - Polygon collisions
 - Game
-    - Enemies
-    - Weapons
+    - Set posiitons in grid
+    - CHange collision detection to just check for things on:
+        - Your cell OR
+        - Cell you are moving to
 
 ## Renderer TODOs
+- Should probably change args for procs to be more specific rather than using Vert_Info and Frag_Info
 - Draw Polygons
 - Draw text (start with bitmap fonts)
 - Draw sprite/texture
-- Draw circle
 - Get hot reloading working
     - Shaders
     - Textures
     - Gameplay code
 
 ## Physics
+- Polygon collisions
 - Collision module is just for detecting if 2 objects are colliding
 - We want a module to apply different formulas depending on if 2 objects colliding and some properties about them
 
