@@ -82,6 +82,21 @@ main :: proc() {
 	/* rducc.renderer_sprite_load("res/scuffed_percy.png") */
 }
 
+game_entity_init :: proc(ctx: ^Game_Context, pos: [3]f32, collider: bool, kind: Entity_Kind) {
+	guy: Entity
+	guy.pos = pos
+	guy.scale = SPRITE_SCALE
+	if collider {
+		guy.collider.origin = guy.pos.xy
+		guy.collider.scale = SPRITE_SCALE
+		guy.collider.kind = .RECT
+	}
+	guy.fire_rate = 0.5
+	guy.kind = kind
+	ctx.entities[ctx.entity_count] = guy
+	ctx.entity_count += 1
+}
+
 run :: proc() {
 	game_ctx: Game_Context
 	rducc.window_open(980,620,"RDUCC DEMO")
@@ -96,28 +111,11 @@ run :: proc() {
 	bullets := make_dynamic_array([dynamic]Entity)
 	guy: Entity
 	//TODO:Find a way to do "canonical" positioning (i.e position by meters and move m/s rather than pixels)game_ctx.
-	guy.pos = {f32(rducc.ctx.window_width)/2.,f32(rducc.ctx.window_height)/2., 0.0}
-	guy.scale = SPRITE_SCALE
-	guy.collider.origin = guy.pos.xy
-	guy.collider.scale = SPRITE_SCALE
-	guy.collider.kind = .RECT
-	guy.fire_rate = 0.5
-	guy.kind = .PLAYER
-	game_ctx.entities[game_ctx.entity_count] = guy
-	game_ctx.entity_count += 1
 	curr_rotation: f32 = 0.
+	game_entity_init(&game_ctx, {500.0, 200.0, 0.0}, true, .PLAYER)
 	player := &game_ctx.entities[0]
 
-	enemy: Entity
-	enemy.pos = {150.,150., 0.0}
-	enemy.scale = SPRITE_SCALE
-	enemy.collider = {
-		origin = enemy.pos.xy,
-		scale  = enemy.scale,
-	}
-	enemy.kind = .ENEMY
-	game_ctx.entities[game_ctx.entity_count] = enemy
-	game_ctx.entity_count += 1
+	game_entity_init(&game_ctx, {150.0, 150.0, 0.0}, true, .ENEMY)
 
 
 	for !rducc.window_close() {
@@ -228,7 +226,7 @@ run :: proc() {
 
 		rducc.renderer_circle_vertices({50.,0., 0.0}, 16.0, 0., rducc.BLUE)
 		rducc.renderer_circle_shader({0.,0.,0.0}, {32.0, 32.0}, 0., rducc.BLUE)
-		rducc.renderer_grid_draw()
+		/* rducc.renderer_grid_draw() */
 
 
 		//TC: CLEANUP
