@@ -162,13 +162,14 @@ window_is_key_down :: proc(key: Key) -> bool {
 	return glfw.GetKey(ctx.window_hndl, i32(key)) == glfw.PRESS
 }
 
-window_is_key_pressed :: proc(key: Key) {
+window_is_key_pressed :: proc(key: Key) -> bool {
 	key_state := ctx.key_input_queue[key]
 	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button
 	if key_state.curr_state == .UP && key_state.prev_state == .DOWN {
-		fmt.println("PRESSED KEY", key)
 		 ctx.key_input_queue[key].prev_state = .UP
+		return true
 	}
+	return false
 }
 
 window_is_mouse_button_down :: proc(mouse_button: Mouse_Button) -> bool {

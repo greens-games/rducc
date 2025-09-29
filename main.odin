@@ -15,6 +15,9 @@ Entity_Kind :: enum {
 	WALL,
 }
 
+W_HEIGHT :: 620
+W_WIDTH  :: 980
+
 ROWS :: 20
 COLS :: 20
 
@@ -27,9 +30,10 @@ Game_Context :: struct {
 //TODO: Decide if I want to move to a grid based map system;
 //This would mainly be for positioning and not necessarily moving, we can also try to standardize distances
 Entity :: struct {
-	id:              u32,
+	id:              i32,
 	kind:            Entity_Kind,
 	pos:          [3]f32,
+	curr_cell:    [2]u32,
 	scale:        [2]f32,
 	velocity:     [2]f32,
 	direction:    [2]f32,
@@ -42,7 +46,7 @@ Entity :: struct {
 }
 
 Cell :: struct {
-	occupiers: [5]u32,
+	occupiers: [3]i32,
 }
 
 
@@ -51,7 +55,7 @@ curr_rotation = math.to_degrees(math.atan2((game_mem.player.y ) - m_pos.y, (game
 */
 
 SPRITE_SCALE :: [2]f32{32.0, 32.0}
-debug_draw_colliders := false
+debug_draw := false
 
 //TODO: Add hot reloading
 main :: proc() {
@@ -97,15 +101,31 @@ game_entity_init :: proc(ctx: ^Game_Context, pos: [3]f32, collider: bool, kind: 
 	ctx.entity_count += 1
 }
 
+game_context_init :: proc() -> Game_Context{
+	ctx: Game_Context
+	for row, r in ctx.grid {
+		for col, c in ctx.grid {
+			ctx.grid[r][c] = {
+				{-1, -1, -1}
+			}
+		}
+	}
+	return ctx
+}
+
+pos_to_cell :: proc(pos: [3]f32) -> [2]u32 {
+	return {u32(math.round_f32(pos.x/SPRITE_SCALE.x)), u32(math.round_f32(pos.y/SPRITE_SCALE.y))}
+}
+
 run :: proc() {
-	game_ctx: Game_Context
+	game_ctx := game_context_init()
 	rducc.window_open(980,620,"RDUCC DEMO")
 	rducc.renderer_init()
 
 	rducc.shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
 	rducc.shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 	rducc.shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
-	rducc.shader_load("res/vert_2d.glsl", "res/grid.glsl")
+	rducc.shader_load("res/vert_grid.glsl", "res/grid.glsl")
 
 	rducc.renderer_sprite_load("res/scuffed_percy.png")
 	bullets := make_dynamic_array([dynamic]Entity)
@@ -164,6 +184,10 @@ run :: proc() {
 			player.velocity.x += f32(100. * dt)
 		}
 
+		if rducc.window_is_key_pressed(.KEY_GRAVE_ACCENT) {
+			debug_draw = !debug_draw
+		}
+
 		// TC: PHYSICS
 		for &bullet in bullets {
 			bullet.velocity += bullet.direction * 250. * f32(dt)
@@ -198,13 +222,33 @@ run :: proc() {
 		player.pos.x += player.velocity.x
 		player.pos.y += player.velocity.y
 		player.collider.origin += player.velocity
+		
 		player.velocity = {}
+
+		//TC: Assign Grid Cells
+		for entity in game_ctx.entities {
+			cell_pos := pos_to_cell(entity.pos)
+			col := cell_pos.x
+			row := cell_pos.y
+			game_ctx.grid[row][col].occupiers[0] = entity.id
+		}
 
 		//TC: RENDER
 		rducc.renderer_background_clear(rducc.GRAY)
+
+		for row, r in game_ctx.grid {
+			for col, c in row {
+				if col.occupiers[0] != -1 {
+					colour: rducc.Colour
+					colour = {255,255,255,125}
+					rducc.renderer_box({f32(c) * SPRITE_SCALE.x,f32(r) * SPRITE_SCALE.y,0.0}, SPRITE_SCALE, colour = colour)
+				}
+			}
+		}
+
 		for &bullet in bullets {
 			rducc.renderer_box(bullet.pos, bullet.scale, bullet.rotation, rducc.BLACK)
-			if debug_draw_colliders {
+			if debug_draw {
 				rducc.renderer_box_lines(bullet.pos, bullet.scale, bullet.rotation, rducc.GREEN)
 			}
 		}
@@ -219,7 +263,7 @@ run :: proc() {
 			case.WALL:
 				rducc.renderer_box(e.pos, e.scale, e.rotation, rducc.BLUE)
 			}
-			if debug_draw_colliders {
+			if debug_draw {
 				rducc.renderer_box_lines({e.collider.origin.x, e.collider.origin.y, 0.0}, e.collider.scale, e.rotation, rducc.GREEN)
 			}
 		}

@@ -17,13 +17,13 @@ grid(vec2 st, float res){
 
 void main()
 {
-    vec2 st = pos.xy/u_resolution.xy;
+    vec2 st = pos.xy;
 
 	float s = size;
-    float pct = grid(st * 320.0, 0.01);
+    float pct = grid(st * 320.0, 0.05);
 
     // Output to screen
 	vec3 p = vec3(pct);
-	vec3 final_colour = colour.rgb * p;
-	FragColor =  vec4(final_colour, 1.0);
+	vec4 final_colour = colour * pct;
+	FragColor =  final_colour;
 }
