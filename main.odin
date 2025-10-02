@@ -188,6 +188,10 @@ run :: proc() {
 			debug_draw = !debug_draw
 		}
 
+		if rducc.window_is_key_pressed(.KEY_Q) {
+
+		}
+
 		// TC: PHYSICS
 		//TODO:THIS IS GOING TO HAVE TO CHANGE ALOT
 		for &bullet in bullets {
@@ -287,8 +291,8 @@ run :: proc() {
 		}
 
 		rducc.renderer_circle_vertices({50.,0., 0.0}, 16.0, 0., rducc.BLUE)
-		rducc.renderer_circle_shader({0.,0.,0.0}, {32.0, 32.0}, 0., rducc.BLUE)
-		/* rducc.renderer_grid_draw() */
+		rducc.renderer_circle_shader({0.0,0.0,0.0}, {32.0, 32.0}, 0., rducc.BLUE)
+		/* rducc.renderer_grid_draw(rducc.GREEN) */
 		//bath render (rducc.commit()?)
 
 

@@ -10,13 +10,13 @@ uniform vec2 u_resolution;
 
 float
 fill_circle(in vec2 st) {
-    float pct = step(distance(st,vec2(0.1)),0.1);
+    float pct = step(distance(st,vec2(0.0)),1.0);
     return pct;
 }
 
 void main()
 {
-	//NOTE:THIS IS SO CLOSE TO BEING CORRECT IT'S JUST NOT IN THE RIGHT POSITION OR GETTING BIGGER
+	//NOTE:THIS IS SO CLOSE TO BEING CORRECT IT'S JUST NOT IN THE RIGHT POSITION
     vec2 st = pos.xy;
 	float pct = fill_circle(st);
 	vec4 final_colour = colour * pct;
