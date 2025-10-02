@@ -14,7 +14,6 @@
         - Circle - Circle
         - Circle - Rect
 - Game
-    - Set posiitons in grid
     - CHange collision detection to just check for things on:
         - Your cell OR
         - Cell you are moving to
@@ -27,7 +26,11 @@
 - Get hot reloading working
     - Shaders
     - Textures
-    - Gameplay code
+- Other APIs (Implement the same OpenGL stuff in these)
+    - Vulkan
+    - DirectX 11
+    - DirectX 12
+    - CPU rendering (Software rendering)
 
 ## Physics
 - Polygon collisions

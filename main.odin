@@ -189,6 +189,7 @@ run :: proc() {
 		}
 
 		// TC: PHYSICS
+		//TODO:THIS IS GOING TO HAVE TO CHANGE ALOT
 		for &bullet in bullets {
 			bullet.velocity += bullet.direction * 250. * f32(dt)
 			for idx in 1..<game_ctx.entity_count{
@@ -201,8 +202,22 @@ run :: proc() {
 					bullet.to_free = true
 				}
 			}
+			if bullet.pos.x + bullet.velocity.x >= (COLS - 1) * SPRITE_SCALE.x || bullet.pos.x + bullet.velocity.x <= 0.0 {
+				bullet.velocity.x *= -1.0
+				bullet.direction.x *= -1.0
+			}
+
+			if bullet.pos.y + bullet.velocity.y >= (ROWS - 1) * SPRITE_SCALE.y || bullet.pos.y + bullet.velocity.y <= 0.0 {
+				bullet.velocity.y *= -1.0
+				bullet.direction.y *= -1.0
+			}
+			if debug_draw {
+				a := 1
+				_ = a
+			}
 			bullet.pos.x += bullet.velocity.x
 			bullet.pos.y += bullet.velocity.y
+
 			bullet.collider.origin += bullet.velocity
 			bullet.velocity = {}
 			if bullet.pos.x > f32(rducc.window_width()) || bullet.pos.x < 0. {
@@ -219,18 +234,21 @@ run :: proc() {
 			game_ctx.entities[1].collider) {
 			player.velocity = {}
 		}
-		player.pos.x += player.velocity.x
-		player.pos.y += player.velocity.y
+		player.pos = clamp_pos(player.pos, player.velocity)
 		player.collider.origin += player.velocity
 		
 		player.velocity = {}
 
 		//TC: Assign Grid Cells
-		for entity in game_ctx.entities {
+		for idx in 0..< game_ctx.entity_count {
+			entity := &game_ctx.entities[idx]
 			cell_pos := pos_to_cell(entity.pos)
+			curr_pos := entity.curr_cell
 			col := cell_pos.x
 			row := cell_pos.y
+			game_ctx.grid[curr_pos.y][curr_pos.x].occupiers[0] = -1
 			game_ctx.grid[row][col].occupiers[0] = entity.id
+			entity.curr_cell = {col, row}
 		}
 
 		//TC: RENDER
@@ -241,7 +259,7 @@ run :: proc() {
 				if col.occupiers[0] != -1 {
 					colour: rducc.Colour
 					colour = {255,255,255,125}
-					rducc.renderer_box({f32(c) * SPRITE_SCALE.x,f32(r) * SPRITE_SCALE.y,0.0}, SPRITE_SCALE, colour = colour)
+					rducc.renderer_box({f32(c) * SPRITE_SCALE.x, f32(r) * SPRITE_SCALE.y, 0.0}, SPRITE_SCALE, colour = colour)
 				}
 			}
 		}
@@ -271,6 +289,7 @@ run :: proc() {
 		rducc.renderer_circle_vertices({50.,0., 0.0}, 16.0, 0., rducc.BLUE)
 		rducc.renderer_circle_shader({0.,0.,0.0}, {32.0, 32.0}, 0., rducc.BLUE)
 		/* rducc.renderer_grid_draw() */
+		//bath render (rducc.commit()?)
 
 
 		//TC: CLEANUP
@@ -283,6 +302,13 @@ run :: proc() {
 		}
 		free_all()
 	}
+}
+
+clamp_pos :: proc(pos: [3]f32, velocity: [2]f32) -> [3]f32 {
+	_pos := pos
+	_pos.x = clamp(_pos.x + velocity.x, 0.0, (COLS - 1.0) * SPRITE_SCALE.x)
+	_pos.y = clamp(_pos.y + velocity.y, 0.0, (ROWS - 1.0) * SPRITE_SCALE.y)
+	return _pos
 }
 
 shape_test :: proc() {
