@@ -10,8 +10,9 @@ uniform vec2 u_resolution;
 
 float
 fill_circle(in vec2 st) {
-    float pct = step(distance(st,vec2(0.0)),1.0);
-    return pct;
+	float inner_pct = step(distance(st,vec2(0.0)),1.0);
+    float outer_pct = step(distance(st,vec2(0.0)),1.0);
+    return inner_pct * outer_pct;
 }
 
 void main()

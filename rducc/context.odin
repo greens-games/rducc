@@ -7,6 +7,7 @@ Shader_Progams :: enum u8 {
 	PRIMITIVE,
 	TEXTURE,
 	CIRCLE,
+	CIRCLE_OUTLINE,
 	GRID,
 }
 

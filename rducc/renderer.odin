@@ -100,7 +100,7 @@ renderer_init :: proc() {
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(ctx.indices) * size_of(ctx.indices[0]), raw_data(ctx.indices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(ctx.indices) * size_of(ctx.indices[0]), raw_data(ctx.indices), gl.DYNAMIC_DRAW)
 	/* gl.BindBuffer(gl.ARRAY_BUFFER, 0) */
 	//NOTE: In the OpenGL and Odin examples they bind VertexArray first but for us we need to bind last unsure why
 	gl.BindVertexArray(VAO)
@@ -162,8 +162,8 @@ renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 	indices := [?]f32 {
 		0
 	}
-	/* gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(u32), &indices, gl.STATIC_DRAW) */
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	/* gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(u32), &indices, gl.DYNAMIC_DRAW) */
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
 	renderer_mvp_apply(pos)
 	gl.DrawArrays(gl.POINTS, 0, len(vertices))
 	/* gl.DrawElements(gl.TRIANGLES, 1, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
@@ -171,7 +171,7 @@ renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 
 renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	program_load(Shader_Progams.PRIMITIVE)
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.DYNAMIC_DRAW)
 	renderer_mvp_apply(pos, scale, rotation)
 	renderer_colour_apply(colour)
 	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
@@ -190,7 +190,7 @@ renderer_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colo
 	{pos_coords = {-1.0,  1.0, 0.0}},
 	{pos_coords = {1.0,  1.0, 0.0}},
 	}
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
 	renderer_mvp_apply(pos, scale, rotation)
 	renderer_colour_apply(colour)
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
@@ -206,7 +206,7 @@ renderer_polygon :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour
 		 0.0,  1.0, 0.0,
 		 0.0, -1.0, 0.0,
 	}
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
 	renderer_colour_apply(colour)
 	/* renderer_mvp_apply(vert_info, frag_info) */
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
@@ -235,8 +235,8 @@ renderer_polygon_sides :: proc(pos: [3]f32, scale: [2]f32, sides: i32, rotation:
 		vertices[i].pos_coords.z = 0.0
 	}
 	
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_temp), &vertices_temp, gl.STATIC_DRAW) */
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
+	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_temp), &vertices_temp, gl.DYNAMIC_DRAW) */
 	renderer_colour_apply(colour)
 	renderer_mvp_apply(pos, scale, rotation)
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
@@ -264,16 +264,27 @@ renderer_circle_vertices :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.
 		vertices[i].pos_coords.z = 0.0
 	}
 	
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
 	renderer_colour_apply(colour)
 	renderer_mvp_apply(pos, radius, rotation)
 	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
 }
 
-//TODO: What is happening here?? Appears the shader is off centre for some reason we need to figure out
 renderer_circle_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	program_load(Shader_Progams.CIRCLE)
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.DYNAMIC_DRAW)
+	renderer_mvp_apply(pos, radius, rotation)
+	renderer_colour_apply(colour)
+
+	//gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
+	//Draw
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
+	program_load(Shader_Progams.PRIMITIVE)
+}
+
+renderer_circle_outline_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+	program_load(Shader_Progams.CIRCLE_OUTLINE)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.DYNAMIC_DRAW)
 	renderer_mvp_apply(pos, radius, rotation)
 	renderer_colour_apply(colour)
 
@@ -318,7 +329,7 @@ renderer_sprite_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, co
 	{pos_coords = {-1.0,  1.0, 0.0},
 	 texture_coords = {0.0, 1.0}},
 	}
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
 	program_load(Shader_Progams.TEXTURE)
 	renderer_mvp_apply(pos, scale, rotation)
 	renderer_colour_apply(colour)
@@ -331,7 +342,7 @@ renderer_grid_draw :: proc(colour := PINK) {
 	renderer_colour_apply(colour)
 	gl.Uniform1f(ctx.loaded_uniforms["size"].location, 160.0)
 	gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.DYNAMIC_DRAW)
 	renderer_colour_apply(colour)
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 	program_load(Shader_Progams.PRIMITIVE)

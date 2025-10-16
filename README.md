@@ -19,10 +19,9 @@
         - Cell you are moving to
 
 ## Renderer TODOs
-- Should probably change args for procs to be more specific rather than using Vert_Info and Frag_Info
+- Do we want to start drawing from middle? we currently draw from bot left (For this we would change the mvp stuff I believe)
 - Draw Polygons
 - Draw text (start with bitmap fonts)
-- Draw sprite/texture
 - Get hot reloading working
     - Shaders
     - Textures

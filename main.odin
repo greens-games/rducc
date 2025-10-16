@@ -125,6 +125,7 @@ run :: proc() {
 	rducc.shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
 	rducc.shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 	rducc.shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
+	rducc.shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
 	rducc.shader_load("res/vert_grid.glsl", "res/grid.glsl")
 
 	rducc.renderer_sprite_load("res/scuffed_percy.png")
@@ -290,8 +291,8 @@ run :: proc() {
 			}
 		}
 
-		rducc.renderer_circle_vertices({50.,0., 0.0}, 16.0, 0., rducc.BLUE)
 		rducc.renderer_circle_shader({0.0,0.0,0.0}, {32.0, 32.0}, 0., rducc.BLUE)
+		rducc.renderer_circle_outline_shader({0.0,0.0,0.0}, {32.0, 32.0}, 0., rducc.BLACK)
 		/* rducc.renderer_grid_draw(rducc.GREEN) */
 		//bath render (rducc.commit()?)
 
