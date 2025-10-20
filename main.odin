@@ -1,9 +1,9 @@
 package main
 
-import "core:sys/posix"
-import "core:math/linalg"
 import "rducc"
 import "pducc"
+
+import "core:math/linalg"
 import "core:fmt"
 import "core:math"
 import "core:mem"
@@ -291,10 +291,12 @@ run :: proc() {
 			}
 		}
 
-		rducc.renderer_circle_shader({0.0,0.0,0.0}, {32.0, 32.0}, 0., rducc.BLUE)
-		rducc.renderer_circle_outline_shader({0.0,0.0,0.0}, {32.0, 32.0}, 0., rducc.BLACK)
+
+		/* rducc.renderer_circle_shader({0.0,0.0,0.0}, {32.0, 32.0}, 0., rducc.BLUE) */
+		/* rducc.renderer_circle_outline_shader({0.0,0.0,0.0}, {32.0, 32.0}, 0., rducc.BLACK) */
 		/* rducc.renderer_grid_draw(rducc.GREEN) */
 		//bath render (rducc.commit()?)
+		rducc.renderer_draw()
 
 
 		//TC: CLEANUP

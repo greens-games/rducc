@@ -3,6 +3,14 @@
 - Extend to be a GUI library intended to be used for other desktop applications
 
 
+## Today's tasks
+- Multiple textures with texture atlas
+- batch rendering
+    - Some list of buffers to display
+    - offset = initial start, next offset = initial_start -> sizeof(data)
+    - Remove use of DrawElements and ELEMENT_ARRAY_BUFFER for now, swithc to DrawArrays
+- circle collision
+
 ## Current tasks
 - Renderer
     - Draw grid

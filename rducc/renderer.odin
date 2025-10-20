@@ -18,6 +18,7 @@ import gl "vendor:OpenGL"
 import glm "core:math/linalg/glsl"
 import "core:fmt"
 Colour :: distinct [4]int
+KB :: 1024
 //NOTE: These are ripped straight from Raylib could probably do something else if we wanted
 LIGHTGRAY  :: Colour{ 200, 200, 200, 255 }   // Light Gray
 GRAY       :: Colour{ 130, 130, 130, 255 }   // Gray
@@ -100,6 +101,7 @@ renderer_init :: proc() {
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+	gl.BufferData(gl.ARRAY_BUFFER, KB * 64, nil, gl.DYNAMIC_DRAW)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(ctx.indices) * size_of(ctx.indices[0]), raw_data(ctx.indices), gl.DYNAMIC_DRAW)
 	/* gl.BindBuffer(gl.ARRAY_BUFFER, 0) */
 	//NOTE: In the OpenGL and Odin examples they bind VertexArray first but for us we need to bind last unsure why
@@ -171,11 +173,12 @@ renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 
 renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	program_load(Shader_Progams.PRIMITIVE)
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.DYNAMIC_DRAW)
+	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.DYNAMIC_DRAW) */
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, size_of(vertices_index_box), &vertices_index_box)
 	renderer_mvp_apply(pos, scale, rotation)
 	renderer_colour_apply(colour)
 	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
-	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
+	/* gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 }
 
 renderer_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
@@ -276,8 +279,6 @@ renderer_circle_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0,
 	renderer_mvp_apply(pos, radius, rotation)
 	renderer_colour_apply(colour)
 
-	//gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
-	//Draw
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 	program_load(Shader_Progams.PRIMITIVE)
 }
@@ -288,8 +289,6 @@ renderer_circle_outline_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f3
 	renderer_mvp_apply(pos, radius, rotation)
 	renderer_colour_apply(colour)
 
-	//gl.Uniform2f(ctx.loaded_uniforms["u_resolution"].location, f32(ctx.window_width), f32(ctx.window_height))
-	//Draw
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 	program_load(Shader_Progams.PRIMITIVE)
 }
@@ -378,5 +377,5 @@ renderer_mvp_apply :: proc(pos: [3]f32, scale := [2]f32{1.0,1.0}, rotation: f32 
 }
 
 renderer_draw :: proc() {
-	//Call gl.DrawArrays to draw everything in the scene
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 }
