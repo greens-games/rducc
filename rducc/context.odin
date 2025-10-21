@@ -27,6 +27,7 @@ Context :: struct {
 	shader_cache_count:   u32,
 	loaded_program:       u32,
 	loaded_uniforms:      gl.Uniforms,
+	buffer_offset:        int,
 
 	time:                 f64,
 	mouse_pos:            [2]f32,

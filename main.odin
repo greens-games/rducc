@@ -280,7 +280,7 @@ run :: proc() {
 			e := game_ctx.entities[idx]
 			switch e.kind {
 			case .PLAYER:
-				rducc.renderer_sprite_draw(e.pos, e.scale, e.rotation, rducc.WHITE)
+				/* rducc.renderer_sprite_draw(e.pos, e.scale, e.rotation, rducc.WHITE) */
 			case.ENEMY:
 				rducc.renderer_box(e.pos, e.scale, e.rotation, rducc.BLUE)
 			case.WALL:
