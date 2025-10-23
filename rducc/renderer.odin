@@ -75,6 +75,7 @@ Vertex :: struct {
 	pos:            [3]f32,
 	scale:          [2]f32,
 	rotation:       f32,
+	colour:         [4]f32,
 }
 
 EBO, VAO, VBO: u32
@@ -121,11 +122,17 @@ renderer_init :: proc() {
 
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), 0)
 	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
-	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, size_of(Vertex), (2 * size_of(f32)))
-	gl.VertexAttribPointer(3, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
-	gl.VertexAttribPointer(4, 1, gl.FLOAT, false, size_of(Vertex), (2 * size_of(f32)))
+	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
+	gl.VertexAttribPointer(3, 2, gl.FLOAT, false, size_of(Vertex), (8 * size_of(f32)))
+	gl.VertexAttribPointer(4, 1, gl.FLOAT, false, size_of(Vertex), (10 * size_of(f32)))
+	gl.VertexAttribPointer(5, 4, gl.FLOAT, false,   size_of(Vertex), (11 * size_of(f32)))
 	gl.EnableVertexAttribArray(0)
 	gl.EnableVertexAttribArray(1)
+	gl.EnableVertexAttribArray(2)
+	gl.EnableVertexAttribArray(3)
+	gl.EnableVertexAttribArray(4)
+	gl.EnableVertexAttribArray(5)
+
 }
 
 debug_proc_t :: proc "c" (
@@ -193,14 +200,25 @@ renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	program_load(Shader_Progams.PRIMITIVE)
 	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.DYNAMIC_DRAW) */
+	v := vertices_index_box
+	r := f32(colour.r) / 255.
+	g := f32(colour.g) / 255.
+	b := f32(colour.b) / 255.
+	a := f32(colour.a) / 255.
+	for &vert in v {
+		vert.pos = pos
+		vert.scale = scale
+		vert.rotation = rotation
+		vert.colour = [4]f32{r,g,b,a}
+	}
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		ctx.buffer_offset,
-		size_of(vertices_index_box),
-		&vertices_index_box,
+		size_of(v),
+		&v,
 	)
 	renderer_mvp_apply(pos, scale, rotation)
-	renderer_colour_apply(colour)
+	/* renderer_colour_apply(colour) */
 	ctx.buffer_offset += size_of(vertices_index_box)
 	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
 	/* gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
@@ -420,10 +438,11 @@ renderer_mvp_apply :: proc(pos: [3]f32, scale := [2]f32{1.0, 1.0}, rotation: f32
 	i *= t
 	i *= rot
 	i *= s
-	gl.UniformMatrix4fv(ctx.loaded_uniforms["transform"].location, 1, false, &i[0, 0])
+	/* gl.UniformMatrix4fv(ctx.loaded_uniforms["transform"].location, 1, false, &i[0, 0]) */
 }
 
 renderer_draw :: proc() {
-	gl.DrawArrays(gl.TRIANGLES, 0, 6)
+	//Count = total num vertices to draw for whole batch
+	gl.DrawArrays(gl.TRIANGLES, 0, 24)
 	ctx.buffer_offset = 0
 }

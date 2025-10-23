@@ -281,6 +281,7 @@ run :: proc() {
 			switch e.kind {
 			case .PLAYER:
 				/* rducc.renderer_sprite_draw(e.pos, e.scale, e.rotation, rducc.WHITE) */
+				rducc.renderer_box(e.pos, e.scale, e.rotation, rducc.BLACK)
 			case.ENEMY:
 				rducc.renderer_box(e.pos, e.scale, e.rotation, rducc.BLUE)
 			case.WALL:

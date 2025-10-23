@@ -6,9 +6,12 @@
 ## Today's tasks
 - Multiple textures with texture atlas
 - batch rendering
-    - Some list of buffers to display
-    - offset = initial start, next offset = initial_start -> sizeof(data)
-    - Remove use of DrawElements and ELEMENT_ARRAY_BUFFER for now, swithc to DrawArrays
+    - Box batch rendering is working
+    - move other draws to batching
+        - texture
+        - circle
+        - outline
+    - refine batching structure
 - circle collision
 
 ## Current tasks
