@@ -9,8 +9,17 @@
     - Box batch rendering is working
     - move other draws to batching
         - texture
+            - specific function call
+            - shader
+            - draw call
         - circle
+            - specific function call
+            - shader
+            - draw call
         - outline
+            - specific function call
+            - shader
+            - draw call
     - refine batching structure
 - circle collision
 
