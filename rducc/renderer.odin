@@ -120,12 +120,12 @@ renderer_init :: proc() {
 	//NOTE: In the OpenGL and Odin examples they bind VertexArray first but for us we need to bind last unsure why
 	gl.BindVertexArray(VAO)
 
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), 0)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), (0 * size_of(f32)))
 	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
 	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
 	gl.VertexAttribPointer(3, 2, gl.FLOAT, false, size_of(Vertex), (8 * size_of(f32)))
 	gl.VertexAttribPointer(4, 1, gl.FLOAT, false, size_of(Vertex), (10 * size_of(f32)))
-	gl.VertexAttribPointer(5, 4, gl.FLOAT, false,   size_of(Vertex), (11 * size_of(f32)))
+	gl.VertexAttribPointer(5, 4, gl.FLOAT, false, size_of(Vertex), (11 * size_of(f32)))
 	gl.EnableVertexAttribArray(0)
 	gl.EnableVertexAttribArray(1)
 	gl.EnableVertexAttribArray(2)
@@ -133,6 +133,22 @@ renderer_init :: proc() {
 	gl.EnableVertexAttribArray(4)
 	gl.EnableVertexAttribArray(5)
 
+
+	shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
+	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
+	shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
+	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
+	shader_load("res/vert_grid.glsl", "res/grid.glsl")
+	projection := glm.mat4Ortho3d(
+		0.0,
+		f32(ctx.window_width),
+		0.0,
+		f32(ctx.window_height),
+		-1.0,
+		1.0,
+	)
+	program_load(Shader_Progams.PRIMITIVE)
+	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
 }
 
 debug_proc_t :: proc "c" (
@@ -199,29 +215,29 @@ renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 
 renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	program_load(Shader_Progams.PRIMITIVE)
-	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_index_box), &vertices_index_box, gl.DYNAMIC_DRAW) */
+
 	v := vertices_index_box
 	r := f32(colour.r) / 255.
 	g := f32(colour.g) / 255.
 	b := f32(colour.b) / 255.
 	a := f32(colour.a) / 255.
+
 	for &vert in v {
 		vert.pos = pos
 		vert.scale = scale
 		vert.rotation = rotation
-		vert.colour = [4]f32{r,g,b,a}
+		vert.colour = renderer_colour_apply(colour)
 	}
+
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		ctx.buffer_offset,
 		size_of(v),
 		&v,
 	)
-	renderer_mvp_apply(pos, scale, rotation)
-	/* renderer_colour_apply(colour) */
+
 	ctx.buffer_offset += size_of(vertices_index_box)
-	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
-	/* gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	ctx.num_vertices += len(vertices_index_box)
 }
 
 renderer_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
@@ -405,15 +421,14 @@ renderer_grid_draw :: proc(colour := PINK) {
 	program_load(Shader_Progams.PRIMITIVE)
 }
 
-renderer_colour_apply :: proc(colour: Colour) {
+renderer_colour_apply :: proc(colour: Colour) -> [4]f32 {
 	//TODO: do colour in separate function
 	r := f32(colour.r) / 255.
 	g := f32(colour.g) / 255.
 	b := f32(colour.b) / 255.
 	a := f32(colour.a) / 255.
 	//TODO: Colour can probably be an attribute rather than uniform
-	gl.Uniform4f(ctx.loaded_uniforms["colour"].location, r, g, b, a)
-
+	return {r, g, b, a}
 }
 
 renderer_mvp_apply :: proc(pos: [3]f32, scale := [2]f32{1.0, 1.0}, rotation: f32 = 0.0) {
@@ -443,6 +458,6 @@ renderer_mvp_apply :: proc(pos: [3]f32, scale := [2]f32{1.0, 1.0}, rotation: f32
 
 renderer_draw :: proc() {
 	//Count = total num vertices to draw for whole batch
-	gl.DrawArrays(gl.TRIANGLES, 0, 24)
+	gl.DrawArrays(gl.TRIANGLES, 0, ctx.num_vertices)
 	ctx.buffer_offset = 0
 }

@@ -29,10 +29,14 @@ Context :: struct {
 	loaded_uniforms:      gl.Uniforms,
 	buffer_offset:        int,
 
+	//NOTE: Batching stuff
+	num_vertices:         i32,
+
 	time:                 f64,
 	mouse_pos:            [2]f32,
 	indices:              []u32,
 	key_input_queue:      [u32(Key.COUNT)]Input_Action,
+
 
 	//NOTE: This should be removed
 	camera:               Camera,

@@ -122,12 +122,6 @@ run :: proc() {
 	rducc.window_open(980,620,"RDUCC DEMO")
 	rducc.renderer_init()
 
-	rducc.shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
-	rducc.shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
-	rducc.shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
-	rducc.shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
-	rducc.shader_load("res/vert_grid.glsl", "res/grid.glsl")
-
 	rducc.renderer_sprite_load("res/scuffed_percy.png")
 	bullets := make_dynamic_array([dynamic]Entity)
 	guy: Entity

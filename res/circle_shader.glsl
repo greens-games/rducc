@@ -2,10 +2,10 @@
 
 in vec2 TexCoord;
 in vec3 pos;
+in vec4 colour;
 
 out vec4 FragColor;
 
-uniform vec4 colour;
 uniform vec2 u_resolution;
 
 float
