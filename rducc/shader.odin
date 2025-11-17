@@ -4,6 +4,12 @@ import "core:time"
 import gl "vendor:OpenGL"
 import "core:fmt"
 
+Shader_Shape :: enum {
+	BOX,
+	CIRCLE,
+	TEXTURE,
+}
+
 //TODO: Free uniforma data
 shader_load :: proc(vs_shader, fs_shader: string) -> u32 {
 	//TODO:manual shader loading, compiling, etc... (Makes debugging easier), use OpenGL/helpers.odin as example

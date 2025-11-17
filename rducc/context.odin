@@ -5,9 +5,9 @@ import gl "vendor:OpenGL"
 
 Shader_Progams :: enum u8 {
 	PRIMITIVE,
-	TEXTURE,
 	CIRCLE,
 	CIRCLE_OUTLINE,
+	TEXTURE,
 	GRID,
 }
 
@@ -31,7 +31,13 @@ Context :: struct {
 
 	//NOTE: Batching stuff
 	num_vertices:         i32,
+	box_vertices:         i32,
+	circle_vertices:      i32,
+	texture_vertices:     i32,
+	outline_vertices:     i32,
+	loaded_buffer:        Shader_Progams,
 
+	//NOTE: Misc 
 	time:                 f64,
 	mouse_pos:            [2]f32,
 	indices:              []u32,

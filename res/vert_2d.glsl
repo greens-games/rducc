@@ -18,8 +18,8 @@ void main()
 {
 	//make transformation matrix
 	mat4 ident = mat4(1.0);
-	vec3 adjusted_scale = vec3(localScale.x / 2.0, localScale.y / 2.0, 1.0);
-	vec3 adjustLocalPos = vec3(localPos.x + adjusted_scale.x, localPos.y + adjusted_scale.y, 0.0);
+	vec3 adjusted_scale = vec3(localScale.x / 2.0, localScale.y / 2.0, localPos.z);
+	vec3 adjustLocalPos = vec3(localPos.x + adjusted_scale.x, localPos.y + adjusted_scale.y, localPos.z);
 	ident[3].xyz = adjustLocalPos.xyz;
 	mat4 s = mat4(1.0);
 	s[0][0] = adjusted_scale[0];

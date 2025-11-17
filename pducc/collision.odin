@@ -1,5 +1,6 @@
 package pducc
 
+import "core:math"
 import "core:fmt"
 
 Collider_Kind :: enum {
@@ -25,9 +26,11 @@ rect_collision :: proc(a, b: Collider) -> bool {
 }
 
 circle_collision :: proc(a, b: Collider) -> bool {
+	assert(a.kind == .CIRCLE && a.kind == .CIRCLE, "A and B must both be Circle Colliders")
 	dist_x := a.origin.x - b.origin.x
 	dist_y := a.origin.y - b.origin.y
-	return false
+	dist := math.sqrt((dist_x * dist_x) + (dist_y * dist_y))
+	return dist <= (a.radius + b.radius)
 }
 
 circle_rect_collision :: proc(a, b: Collider) -> bool {
