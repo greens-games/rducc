@@ -109,6 +109,8 @@ run :: proc() {
 	random_circle.collider.radius = 16.0
 	random_circle.collider.origin = {random_circle.pos.x, random_circle.pos.y}
 
+	rducc.renderer_sprite_load("res/scuffed_percy.png")
+
 	colour := rducc.GREEN
 
 	for !rducc.window_close() {
@@ -174,6 +176,8 @@ run :: proc() {
 		rducc.renderer_box({50.0,50.0,1.0}, {16.0,16.0}, 0.0, rducc.RED)
 		rducc.renderer_circle_shader({100.0,100.0,0.0}, {32.0, 32.0}, 0.0, rducc.BLUE)
 		rducc.renderer_circle_shader({m_pos.x - 8, m_pos.y - 8, 0.0}, {16.0, 16.0}, 0.0, colour)
+		rducc.renderer_sprite_draw({150.0,150.0,1.0}, {32.0,32.0})
+		/* rducc.renderer_box({150.0,150.0,1.0}, {32.0,32.0}) */
 		rducc.renderer_draw()
 
 		//TC: CLEANUP

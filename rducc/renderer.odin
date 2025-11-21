@@ -76,11 +76,10 @@ Vertex :: struct {
 	scale:          [2]f32,
 	rotation:       f32,
 	colour:         [4]f32,
-	shape:          f32,
 }
 
 EBO, VAO, VBO: u32
-VBO_MULTI: [10]u32
+VBO_MULTI: [4]u32
 
 renderer_init :: proc() {
 	gl.load_up_to(4, 6, glfw.gl_set_proc_address) //required for proc address stuff
@@ -112,11 +111,14 @@ renderer_init :: proc() {
 
 	//TODO: Generate and store a buffer for each batch type?
 	gl.GenVertexArrays(1, &VAO)
-	gl.GenBuffers(2, raw_data(&VBO_MULTI))
+	gl.GenBuffers(4, raw_data(&VBO_MULTI))
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[0])
 	gl.BufferData(gl.ARRAY_BUFFER, KB * 64, nil, gl.DYNAMIC_DRAW)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[1])
+	gl.BufferData(gl.ARRAY_BUFFER, KB * 64, nil, gl.DYNAMIC_DRAW)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
 	gl.BufferData(gl.ARRAY_BUFFER, KB * 64, nil, gl.DYNAMIC_DRAW)
 
 	gl.BindVertexArray(VAO)
@@ -144,7 +146,8 @@ renderer_init :: proc() {
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
 	program_load(Shader_Progams.PRIMITIVE)
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
-
+	program_load(Shader_Progams.TEXTURE)
+	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
 }
 
 debug_proc_t :: proc "c" (
@@ -223,12 +226,11 @@ renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := 
 		vert.scale = scale
 		vert.rotation = rotation
 		vert.colour = renderer_colour_apply(colour)
-		vert.shape = f32(Shader_Shape.BOX)
 	}
 
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
-		ctx.buffer_offset,
+		int(ctx.box_vertices) * size_of(Vertex),
 		size_of(v),
 		&v,
 	)
@@ -341,12 +343,11 @@ renderer_circle_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0,
 		vert.scale    = radius
 		vert.rotation = rotation
 		vert.colour   = renderer_colour_apply(colour)
-		vert.shape    = f32(Shader_Shape.CIRCLE)
 	}
 
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
-		ctx.buffer_offset,
+		int(ctx.circle_vertices) * size_of(Vertex),
 		size_of(v),
 		&v,
 	)
@@ -394,7 +395,8 @@ renderer_sprite_load :: proc(f_name: cstring) {
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 }
 
-renderer_sprite_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+renderer_sprite_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
 	vertices := [?]Vertex {
 		//1
 		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {1.0, 1.0}},
@@ -405,12 +407,23 @@ renderer_sprite_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, co
 		{pos_coords = {-1.0, -1.0, 0.0}, texture_coords = {0.0, 0.0}},
 		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 1.0}},
 	}
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
-	program_load(Shader_Progams.TEXTURE)
-	renderer_mvp_apply(pos, scale, rotation)
-	renderer_colour_apply(colour)
-	gl.DrawArrays(gl.TRIANGLES, 0, 6)
-	program_load(Shader_Progams.PRIMITIVE)
+
+	for &vert in vertices {
+		vert.pos      = pos
+		vert.scale    = scale
+		vert.rotation = rotation
+		vert.colour   = renderer_colour_apply(colour)
+	}
+
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		int(ctx.texture_vertices) * size_of(Vertex),
+		size_of(vertices),
+		&vertices,
+	)
+	ctx.buffer_offset += size_of(vertices)
+	ctx.num_vertices += len(vertices)
+	ctx.texture_vertices += len(vertices)
 }
 
 renderer_grid_draw :: proc(colour := PINK) {
@@ -443,6 +456,7 @@ renderer_colour_apply :: proc(colour: Colour) -> [4]f32 {
 	return {r, g, b, a}
 }
 
+//NOTE: Unused for now
 renderer_mvp_apply :: proc(pos: [3]f32, scale := [2]f32{1.0, 1.0}, rotation: f32 = 0.0) {
 
 	camera_scale := ctx.camera.zoom > 0.0 ? ctx.camera.zoom : 1.0
@@ -473,13 +487,21 @@ renderer_draw :: proc() {
 	renderer_vertex_attrib_apply()
 	program_load(.PRIMITIVE)
 	gl.DrawArrays(gl.TRIANGLES, 0, ctx.box_vertices)
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[1])
 	renderer_vertex_attrib_apply()
 	program_load(.CIRCLE)
-	gl.DrawArrays(gl.TRIANGLES, ctx.box_vertices, ctx.circle_vertices + ctx.box_vertices)
+	gl.DrawArrays(gl.TRIANGLES, 0, ctx.circle_vertices)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
+	renderer_vertex_attrib_apply()
+	program_load(.TEXTURE)
+	gl.DrawArrays(gl.TRIANGLES, 0, ctx.texture_vertices)
+
 	ctx.buffer_offset = 0
 	ctx.box_vertices = 0
 	ctx.circle_vertices = 0
+	ctx.texture_vertices = 0
 }
 
 renderer_vertex_attrib_apply :: proc() {
