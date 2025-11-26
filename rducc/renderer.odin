@@ -132,7 +132,7 @@ renderer_init :: proc() {
 	shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
-	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
+	shader_load("res/vert_2d.glsl", "res/frag_texture_array.glsl")
 	shader_load("res/vert_grid.glsl", "res/grid.glsl")
 	projection := glm.mat4Ortho3d(
 		0.0,
@@ -385,6 +385,7 @@ renderer_sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
 	gl.GenTextures(1, &texture_hndl)
+	gl.GetTextureHandleARB(texture_hndl)
 
 	texture: Ducc_Texture
 	texture.data   = data
@@ -392,6 +393,61 @@ renderer_sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
 	texture.width  = width
 	texture.hndl   = texture_hndl
 	return texture
+}
+
+//Read in some file
+//Allocate Texture to Texture Array
+//Return texture data
+renderer_sprite_texture_array_load :: proc(f_name: cstring)  -> Ducc_Texture {
+	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
+	height, width, channels_in_file: i32
+	stbi.set_flip_vertically_on_load(1)
+	data := stbi.load(f_name, &height, &width, &channels_in_file, 4)
+	texture_hndl: u32
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	gl.GenTextures(1, &texture_hndl)
+	gl.GetTextureHandleARB(texture_hndl)
+
+	texture: Ducc_Texture
+	texture.data   = data
+	texture.height = height
+	texture.width  = width
+	texture.hndl   = texture_hndl
+	return texture
+}
+
+//Takes in position data, and texture data to be drawn
+renderer_sprite_texture_array_draw :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
+	gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
+	vertices := [?]Vertex {
+		//1
+		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {1.0, 1.0}},
+		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 0.0}},
+		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 1.0}},
+		//2
+		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 0.0}},
+		{pos_coords = {-1.0, -1.0, 0.0}, texture_coords = {0.0, 0.0}},
+		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 1.0}},
+	}
+
+	for &vert in vertices {
+		vert.pos      = pos
+		vert.scale    = scale
+		vert.rotation = rotation
+		vert.colour   = renderer_colour_apply(colour)
+	}
+
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		int(ctx.texture_vertices) * size_of(Vertex),
+		size_of(vertices),
+		&vertices,
+	)
+	ctx.texture_vertices += len(vertices)
 }
 
 renderer_sprite_atlas_load :: proc(f_name: cstring) -> Ducc_Texture {
