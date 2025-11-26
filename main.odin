@@ -1,5 +1,6 @@
 package main
 
+import "core:time"
 import "rducc"
 import "pducc"
 
@@ -97,7 +98,7 @@ run :: proc() {
 	mouse_entity.id = 0
 	mouse_entity.collider = {}
 	mouse_entity.collider.scale = {16.0, 16.0}
-	mouse_entity.collider.kind = .CIRCLE
+	mouse_entity.collider.kind = .RECT
 	mouse_entity.collider.radius = 16.0
 
 	random_circle: Entity
@@ -105,11 +106,12 @@ run :: proc() {
 	random_circle.pos = {100.0, 100.0, 0.0}
 	random_circle.collider = {}
 	random_circle.collider.scale = {32.0, 32.0}
-	random_circle.collider.kind = .CIRCLE
+	random_circle.collider.kind = .RECT
 	random_circle.collider.radius = 16.0
 	random_circle.collider.origin = {random_circle.pos.x, random_circle.pos.y}
 
-	rducc.renderer_sprite_load("res/scuffed_percy.png")
+	percy_texture := rducc.renderer_sprite_load("res/scuffed_percy.png")
+	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
 
 	colour := rducc.GREEN
 
@@ -131,7 +133,7 @@ run :: proc() {
 		mouse_entity.pos = {m_pos.x - 8, m_pos.y - 8, 0.0}
 		mouse_entity.collider.origin = m_pos.xy
 
-		if pducc.circle_collision(mouse_entity.collider, random_circle.collider) {
+		if pducc.rect_collision(mouse_entity.collider, random_circle.collider) {
 			colour = rducc.PINK
 		} else {
 			colour = rducc.GREEN
@@ -176,7 +178,8 @@ run :: proc() {
 		rducc.renderer_box({50.0,50.0,1.0}, {16.0,16.0}, 0.0, rducc.RED)
 		rducc.renderer_circle_shader({100.0,100.0,0.0}, {32.0, 32.0}, 0.0, rducc.BLUE)
 		rducc.renderer_circle_shader({m_pos.x - 8, m_pos.y - 8, 0.0}, {16.0, 16.0}, 0.0, colour)
-		rducc.renderer_sprite_draw({150.0,150.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(percy_texture, {150.0,150.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(player_filled_texture, {350.0,350.0,1.0}, {32.0,32.0})
 		/* rducc.renderer_box({150.0,150.0,1.0}, {32.0,32.0}) */
 		rducc.renderer_draw()
 
@@ -191,4 +194,16 @@ clamp_pos :: proc(pos: [3]f32, velocity: [2]f32) -> [3]f32 {
 	_pos.x = clamp(_pos.x + velocity.x, 0.0, (COLS - 1.0) * SPRITE_SCALE.x)
 	_pos.y = clamp(_pos.y + velocity.y, 0.0, (ROWS - 1.0) * SPRITE_SCALE.y)
 	return _pos
+}
+
+debug_profile :: proc(a: rawptr, msg: string) {
+	start := time.now()
+	_a := cast(proc()) a
+	_a()
+	end := time.now()
+	fmt.printfln("Time taken to draw box: %d", (end._nsec - start._nsec))
+}
+
+test :: proc() {
+	fmt.println("void *")
 }

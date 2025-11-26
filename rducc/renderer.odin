@@ -235,8 +235,6 @@ renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := 
 		&v,
 	)
 
-	ctx.buffer_offset += size_of(vertices_index_box)
-	ctx.num_vertices += len(vertices_index_box)
 	ctx.box_vertices += len(vertices_index_box)
 }
 
@@ -352,8 +350,6 @@ renderer_circle_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0,
 		&v,
 	)
 
-	ctx.buffer_offset += size_of(vertices_index_box)
-	ctx.num_vertices += len(vertices_index_box)
 	ctx.circle_vertices += len(vertices_index_box)
 }
 
@@ -377,12 +373,32 @@ renderer_circle_outline_shader :: proc(
 	program_load(Shader_Progams.PRIMITIVE)
 }
 
-renderer_sprite_load :: proc(f_name: cstring) {
+//Read in some file name
+//Return back data about the texture
+renderer_sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
 	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
 	height, width, channels_in_file: i32
 	stbi.set_flip_vertically_on_load(1)
 	data := stbi.load(f_name, &height, &width, &channels_in_file, 4)
+	texture_hndl: u32
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	gl.GenTextures(1, &texture_hndl)
 
+	texture: Ducc_Texture
+	texture.data   = data
+	texture.height = height
+	texture.width  = width
+	texture.hndl   = texture_hndl
+	return texture
+}
+
+renderer_sprite_atlas_load :: proc(f_name: cstring) -> Ducc_Texture {
+	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
+	height, width, channels_in_file: i32
+	stbi.set_flip_vertically_on_load(1)
+	data := stbi.load(f_name, &height, &width, &channels_in_file, 4)
 
 	texture_hndl: u32
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
@@ -391,12 +407,21 @@ renderer_sprite_load :: proc(f_name: cstring) {
 	gl.GenTextures(1, &texture_hndl)
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, height, width, 0, gl.RGBA, gl.UNSIGNED_BYTE, data)
 	gl.GenerateMipmap(gl.TEXTURE_2D)
+
+	texture: Ducc_Texture
+	texture.data   = data
+	texture.height = height
+	texture.width  = width
+	texture.hndl   = texture_hndl
+	return texture
 }
 
-renderer_sprite_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
+//Takes in position data, and texture data to be drawn
+renderer_sprite_draw :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
+	gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
 	vertices := [?]Vertex {
 		//1
 		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {1.0, 1.0}},
@@ -421,8 +446,6 @@ renderer_sprite_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, co
 		size_of(vertices),
 		&vertices,
 	)
-	ctx.buffer_offset += size_of(vertices)
-	ctx.num_vertices += len(vertices)
 	ctx.texture_vertices += len(vertices)
 }
 
@@ -496,9 +519,9 @@ renderer_draw :: proc() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
 	renderer_vertex_attrib_apply()
 	program_load(.TEXTURE)
+	gl.GenerateMipmap(gl.TEXTURE_2D)
 	gl.DrawArrays(gl.TRIANGLES, 0, ctx.texture_vertices)
 
-	ctx.buffer_offset = 0
 	ctx.box_vertices = 0
 	ctx.circle_vertices = 0
 	ctx.texture_vertices = 0

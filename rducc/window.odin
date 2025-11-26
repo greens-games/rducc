@@ -85,8 +85,6 @@ window_close :: proc() -> bool {
 		glfw.SetWindowShouldClose(ctx.window_hndl, true)
 	}
 
-	//TODO: We should probably move this to an explicit call that also does batch rendering
-	//rducc.commit or something
 	glfw.PollEvents()
 	glfw.SwapBuffers(ctx.window_hndl)
 	return bool(glfw.WindowShouldClose(ctx.window_hndl))

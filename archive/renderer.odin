@@ -95,6 +95,12 @@ renderer_init :: proc() {
 	ctx.indices[4] = 2
 	ctx.indices[5] = 3
 
+	shader_load("archive/vert_2d.glsl", "archive/frag_primitive.glsl")
+	shader_load("archive/vert_2d.glsl", "archive/frag_texture.glsl")
+	shader_load("archive/vert_2d.glsl", "archive/circle_shader.glsl")
+	shader_load("archive/vert_2d.glsl", "archive/circle_outline_shader.glsl")
+	shader_load("archive/vert_grid.glsl", "archive/grid.glsl")
+
 	gl.GenVertexArrays(1, &VAO)
 	gl.GenBuffers(1, &VBO)
 	gl.GenBuffers(1, &EBO)
@@ -178,7 +184,7 @@ renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := 
 	renderer_mvp_apply(pos, scale, rotation)
 	renderer_colour_apply(colour)
 	//NOTE: We may want gather all data and do a single draw call at the end but for now we will draw each time
-	/* gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 }
 
 renderer_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
@@ -331,7 +337,7 @@ renderer_sprite_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, co
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
 	program_load(Shader_Progams.TEXTURE)
 	renderer_mvp_apply(pos, scale, rotation)
-	renderer_colour_apply(colour)
+	renderer_colour_apply(WHITE)
 	gl.DrawArrays(gl.TRIANGLES, 0, 6)
 	program_load(Shader_Progams.PRIMITIVE)
 }

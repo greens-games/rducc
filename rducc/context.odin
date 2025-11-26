@@ -43,9 +43,18 @@ Context :: struct {
 	indices:              []u32,
 	key_input_queue:      [u32(Key.COUNT)]Input_Action,
 
+	//Textures
+	level:                i32,
 
 	//NOTE: This should be removed
 	camera:               Camera,
+}
+
+Ducc_Texture :: struct {
+	hndl:   u32,
+	data:   [^]byte,
+	height: i32,
+	width:  i32,
 }
 
 //TODO: This probably shouldn't be a static global, maybe make it a pointer you can pass around when needed on init?
