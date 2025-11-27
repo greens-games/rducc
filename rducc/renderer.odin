@@ -222,7 +222,6 @@ renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 	indices := [?]f32{0}
 	/* gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(u32), &indices, gl.DYNAMIC_DRAW) */
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
-	renderer_mvp_apply(pos)
 	gl.DrawArrays(gl.POINTS, 0, len(vertices))
 	/* gl.DrawElements(gl.TRIANGLES, 1, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 }
@@ -266,7 +265,6 @@ renderer_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colo
 		{pos_coords = {1.0, 1.0, 0.0}},
 	}
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
-	renderer_mvp_apply(pos, scale, rotation)
 	renderer_colour_apply(colour)
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 	gl.DrawArrays(gl.LINES, 0, 8)
@@ -309,37 +307,9 @@ renderer_polygon_sides :: proc(
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
 	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_temp), &vertices_temp, gl.DYNAMIC_DRAW) */
 	renderer_colour_apply(colour)
-	renderer_mvp_apply(pos, scale, rotation)
 	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
 	/* gl.DrawArrays(gl.TRIANGLE_FAN, 0, 5) */
-}
-
-renderer_circle_vertices :: proc(
-	pos: [3]f32,
-	radius: [2]f32,
-	rotation: f32 = 0.0,
-	colour := PINK,
-) {
-	vertices: [21]Vertex
-	segments := len(vertices) - 1
-	two_pi := 2.0 * math.PI
-
-	vertices[0] = {
-		pos_coords = {0.0, 0.0, 0.0},
-	}
-
-	for i in 0 ..= segments {
-		circ_pos := f32(f64(i) * two_pi / f64(segments))
-		vertices[i].pos_coords.x = 0.0 + (1.0 * math.cos_f32(circ_pos))
-		vertices[i].pos_coords.y = 0.0 + (1.0 * math.sin_f32(circ_pos))
-		vertices[i].pos_coords.z = 0.0
-	}
-
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
-	renderer_colour_apply(colour)
-	renderer_mvp_apply(pos, radius, rotation)
-	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
 }
 
 renderer_circle_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
@@ -381,7 +351,6 @@ renderer_circle_outline_shader :: proc(
 		&vertices_index_box,
 		gl.DYNAMIC_DRAW,
 	)
-	renderer_mvp_apply(pos, radius, rotation)
 	renderer_colour_apply(colour)
 
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
@@ -550,39 +519,12 @@ renderer_grid_draw :: proc(colour := PINK) {
 }
 
 renderer_colour_apply :: proc(colour: Colour) -> [4]f32 {
-	//TODO: do colour in separate function
 	r := f32(colour.r) / 255.
 	g := f32(colour.g) / 255.
 	b := f32(colour.b) / 255.
 	a := f32(colour.a) / 255.
 	//TODO: Colour can probably be an attribute rather than uniform
 	return {r, g, b, a}
-}
-
-//NOTE: Unused for now
-renderer_mvp_apply :: proc(pos: [3]f32, scale := [2]f32{1.0, 1.0}, rotation: f32 = 0.0) {
-
-	camera_scale := ctx.camera.zoom > 0.0 ? ctx.camera.zoom : 1.0
-	//TODO: Apply zoom to projection matrix
-	projection := glm.mat4Ortho3d(
-		0.0,
-		f32(ctx.window_width) / camera_scale,
-		0.0,
-		f32(ctx.window_height) / camera_scale,
-		-1.0,
-		1.0,
-	)
-	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
-
-	adjusted_scale := [3]f32{scale.x / 2., scale.y / 2., 0.}
-	i := glm.identity(glm.mat4)
-	t := glm.mat4Translate({pos.x + adjusted_scale.x, pos.y + adjusted_scale.y, 0.})
-	s := glm.mat4Scale({scale.x / 2., scale.y / 2., 1.0})
-	rot := glm.mat4Rotate({0.0, 0.0, 1.0}, glm.radians(rotation))
-	i *= t
-	i *= rot
-	i *= s
-	/* gl.UniformMatrix4fv(ctx.loaded_uniforms["transform"].location, 1, false, &i[0, 0]) */
 }
 
 renderer_draw :: proc() {

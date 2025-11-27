@@ -4,17 +4,14 @@
 
 
 ## Today's tasks
-- Render more than 1 texture
-    - Check currently buffered texture via handle or something
-    - If texture to draw changes draw current texture buffer
-    - load new texture in
-    - From what I can tell this is basically what raylib does
 ## Current tasks
 - Renderer
     - Draw grid
     - Camera
     - Batch rendering
     - Multiple textures
+        - Texture Atlas
+        - Multiple texture units with current texture logic
         - Texture2D Arrays
         - Bindless Textures
 - Physics
