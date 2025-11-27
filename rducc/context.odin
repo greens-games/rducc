@@ -46,6 +46,7 @@ Context :: struct {
 	//Textures
 	levels:               i32,
 	curr_level:           i32,
+	curr_texture_hndl:    u32,
 
 	//NOTE: This should be removed
 	camera:               Camera,

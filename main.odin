@@ -179,7 +179,13 @@ run :: proc() {
 		rducc.renderer_circle_shader({100.0,100.0,0.0}, {32.0, 32.0}, 0.0, rducc.BLUE)
 		rducc.renderer_circle_shader({m_pos.x - 8, m_pos.y - 8, 0.0}, {16.0, 16.0}, 0.0, colour)
 		rducc.renderer_sprite_draw(percy_texture, {150.0,150.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(player_filled_texture, {180.0,350.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(percy_texture, {150.0,370.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(percy_texture, {150.0,290.0,1.0}, {32.0,32.0})
 		rducc.renderer_sprite_draw(player_filled_texture, {350.0,350.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(player_filled_texture, {460.0,350.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(player_filled_texture, {570.0,350.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(player_filled_texture, {280.0,350.0,1.0}, {32.0,32.0})
 		/* rducc.renderer_box({150.0,150.0,1.0}, {32.0,32.0}) */
 		rducc.renderer_draw()
 
