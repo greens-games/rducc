@@ -78,8 +78,18 @@ Vertex :: struct {
 	colour:         [4]f32,
 }
 
+/* Vertex :: struct {
+	pos_coords:     [3]f32,
+	texture_coords: [3]f32,
+	pos:            [3]f32,
+	scale:          [2]f32,
+	rotation:       f32,
+	colour:         [4]f32,
+} */
+
 EBO, VAO, VBO: u32
-VBO_MULTI: [4]u32
+VBO_MULTI:     [4]u32
+TEXTURE_HNDL:  u32
 
 renderer_init :: proc() {
 	gl.load_up_to(4, 6, glfw.gl_set_proc_address) //required for proc address stuff
@@ -129,10 +139,15 @@ renderer_init :: proc() {
 	gl.EnableVertexAttribArray(4)
 	gl.EnableVertexAttribArray(5)
 
+	gl.TexParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	/* gl.ActiveTexture(gl.TEXTURE0) */
+
 	shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
-	shader_load("res/vert_2d.glsl", "res/frag_texture_array.glsl")
+	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 	shader_load("res/vert_grid.glsl", "res/grid.glsl")
 	projection := glm.mat4Ortho3d(
 		0.0,
@@ -385,7 +400,6 @@ renderer_sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
 	gl.GenTextures(1, &texture_hndl)
-	gl.GetTextureHandleARB(texture_hndl)
 
 	texture: Ducc_Texture
 	texture.data   = data
@@ -404,25 +418,27 @@ renderer_sprite_texture_array_load :: proc(f_name: cstring)  -> Ducc_Texture {
 	stbi.set_flip_vertically_on_load(1)
 	data := stbi.load(f_name, &height, &width, &channels_in_file, 4)
 	texture_hndl: u32
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-	gl.GenTextures(1, &texture_hndl)
-	gl.GetTextureHandleARB(texture_hndl)
+	gl.GenTextures(1, &TEXTURE_HNDL)
+	gl.BindTexture(gl.TEXTURE_2D_ARRAY, TEXTURE_HNDL)
+	gl.TextureStorage3D(TEXTURE_HNDL, 2, gl.RGBA8, 16, 16, 2)
 
 	texture: Ducc_Texture
 	texture.data   = data
 	texture.height = height
 	texture.width  = width
-	texture.hndl   = texture_hndl
+	texture.hndl   = TEXTURE_HNDL
+	texture.level  = ctx.curr_level
+	ctx.curr_level += 1
 	return texture
 }
 
 //Takes in position data, and texture data to be drawn
 renderer_sprite_texture_array_draw :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
-	gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
+	/* gl.TextureSubImage2D(texture.hndl, 0, 0, 0, texture.width, texture.height, gl.RGBA, gl.UNSIGNED_BYTE, texture.data) */
+	/* gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data) */
+	gl.TextureSubImage3D(texture.hndl, 0, 0, 0, 0, texture.width, texture.height, texture.level, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
+	/* gl.TexImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, texture.height, texture.width, texture.level, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data) */
 	vertices := [?]Vertex {
 		//1
 		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {1.0, 1.0}},
@@ -581,6 +597,7 @@ renderer_draw :: proc() {
 	ctx.box_vertices = 0
 	ctx.circle_vertices = 0
 	ctx.texture_vertices = 0
+	ctx.curr_level = 0
 }
 
 renderer_vertex_attrib_apply :: proc() {
