@@ -6,10 +6,12 @@ layout (location = 2) in vec3 localPos;
 layout (location = 3) in vec2 localScale;
 layout (location = 4) in float rotation;
 layout (location = 5) in vec4 i_colour;
+layout (location = 6) in vec4 b_colour;
 
 out vec2 TexCoord;
 out vec3 pos;
 out vec4 colour;
+out vec4 borderColour;
 
 /* uniform mat4 transform; */
 uniform mat4 projection;
@@ -31,4 +33,5 @@ void main()
 	TexCoord = aTexCoord;
 	pos = aPos;
 	colour = i_colour;
+	borderColour = b_colour;
 }

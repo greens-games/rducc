@@ -69,6 +69,7 @@ main :: proc() {
 	}
 
 	run()
+	/* test() */
 }
 
 game_context_init :: proc() -> Game_Context{
@@ -175,7 +176,8 @@ run :: proc() {
 		}
 
 
-		rducc.renderer_box({50.0,50.0,1.0}, {16.0,16.0}, 0.0, rducc.RED)
+		rducc.renderer_box({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
+		rducc.renderer_box_lines({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.GREEN)
 		rducc.renderer_circle_shader({100.0,100.0,0.0}, {32.0, 32.0}, 0.0, rducc.BLUE)
 		rducc.renderer_circle_shader({m_pos.x - 8, m_pos.y - 8, 0.0}, {16.0, 16.0}, 0.0, colour)
 		rducc.renderer_sprite_draw(percy_texture, {150.0,150.0,1.0}, {32.0,32.0})
@@ -186,8 +188,7 @@ run :: proc() {
 		rducc.renderer_sprite_draw(player_filled_texture, {460.0,350.0,1.0}, {32.0,32.0})
 		rducc.renderer_sprite_draw(player_filled_texture, {570.0,350.0,1.0}, {32.0,32.0})
 		rducc.renderer_sprite_draw(player_filled_texture, {280.0,350.0,1.0}, {32.0,32.0})
-		/* rducc.renderer_box({150.0,150.0,1.0}, {32.0,32.0}) */
-		rducc.renderer_draw()
+		rducc.renderer_commit()
 
 		//TC: CLEANUP
 		//NOTE: This is really bad and should probably not stay, find a better way to free bullets
@@ -211,5 +212,5 @@ debug_profile :: proc(a: rawptr, msg: string) {
 }
 
 test :: proc() {
-	fmt.println("void *")
+	fmt.printfln("%d", size_of(rducc.Vertex))
 }

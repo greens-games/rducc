@@ -69,6 +69,7 @@ Frag_Info :: struct {
 	colour: Colour,
 }
 
+//NOTE: This is getting large maybe we can make it smaller somehow
 Vertex :: struct {
 	pos_coords:     [3]f32,
 	texture_coords: [2]f32,
@@ -76,6 +77,7 @@ Vertex :: struct {
 	scale:          [2]f32,
 	rotation:       f32,
 	colour:         [4]f32,
+	border_colour:  [4]f32,
 }
 
 /* Vertex :: struct {
@@ -138,6 +140,7 @@ renderer_init :: proc() {
 	gl.EnableVertexAttribArray(3)
 	gl.EnableVertexAttribArray(4)
 	gl.EnableVertexAttribArray(5)
+	gl.EnableVertexAttribArray(6)
 
 	gl.TexParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.REPEAT)
@@ -240,6 +243,7 @@ renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := 
 		vert.scale = scale
 		vert.rotation = rotation
 		vert.colour = renderer_colour_apply(colour)
+		vert.border_colour = [4]f32{0,0,0,0}
 	}
 
 	gl.BufferSubData(
@@ -253,21 +257,30 @@ renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := 
 }
 
 renderer_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
-	//TODO: This could be indices if we can figure out how to not get the errors?
-	vertices := [?]Vertex {
-		{pos_coords = {1.0, 1.0, 0.0}},
-		{pos_coords = {1.0, -1.0, 0.0}},
-		{pos_coords = {1.0, -1.0, 0.0}},
-		{pos_coords = {-1.0, -1.0, 0.0}},
-		{pos_coords = {-1.0, -1.0, 0.0}},
-		{pos_coords = {-1.0, 1.0, 0.0}},
-		{pos_coords = {-1.0, 1.0, 0.0}},
-		{pos_coords = {1.0, 1.0, 0.0}},
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[i32(Shader_Progams.PRIMITIVE)])
+
+	v := vertices_index_box
+	r := f32(colour.r) / 255.
+	g := f32(colour.g) / 255.
+	b := f32(colour.b) / 255.
+	a := f32(colour.a) / 255.
+
+	for &vert in v {
+		vert.pos = pos
+		vert.scale = scale
+		vert.rotation = rotation
+		vert.border_colour = renderer_colour_apply(colour)
+		vert.colour = [4]f32{0,0,0,0}
 	}
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
-	renderer_colour_apply(colour)
-	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
-	gl.DrawArrays(gl.LINES, 0, 8)
+
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		int(ctx.box_vertices) * size_of(Vertex),
+		size_of(v),
+		&v,
+	)
+
+	ctx.box_vertices += len(vertices_index_box)
 }
 
 //NOTE: For polygons we need to define the vertices we are doing and adjust scaling based on that I think
@@ -465,7 +478,7 @@ renderer_sprite_draw :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, 
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
 		ctx.curr_texture_hndl = texture.hndl
 	} else if (texture.hndl != ctx.curr_texture_hndl) {
-		renderer_texture_batch_draw(ctx.curr_texture_hndl)
+		renderer_texture_batch_commit(ctx.curr_texture_hndl)
 		gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
 		ctx.curr_texture_hndl = texture.hndl
@@ -527,7 +540,7 @@ renderer_colour_apply :: proc(colour: Colour) -> [4]f32 {
 	return {r, g, b, a}
 }
 
-renderer_draw :: proc() {
+renderer_commit :: proc() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[0])
 	renderer_vertex_attrib_apply()
 	program_load(.PRIMITIVE)
@@ -537,7 +550,7 @@ renderer_draw :: proc() {
 	renderer_vertex_attrib_apply()
 	program_load(.CIRCLE)
 	gl.DrawArrays(gl.TRIANGLES, 0, ctx.circle_vertices)
-	renderer_texture_batch_draw(ctx.curr_texture_hndl)
+	renderer_texture_batch_commit(ctx.curr_texture_hndl)
 
 	ctx.box_vertices = 0
 	ctx.circle_vertices = 0
@@ -545,7 +558,7 @@ renderer_draw :: proc() {
 	ctx.curr_texture_hndl = 0
 }
 
-renderer_texture_batch_draw :: proc(handl: u32) {
+renderer_texture_batch_commit :: proc(handl: u32) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
 	renderer_vertex_attrib_apply()
 	program_load(.TEXTURE)
@@ -561,4 +574,5 @@ renderer_vertex_attrib_apply :: proc() {
 	gl.VertexAttribPointer(3, 2, gl.FLOAT, false, size_of(Vertex), (8 * size_of(f32)))
 	gl.VertexAttribPointer(4, 1, gl.FLOAT, false, size_of(Vertex), (10 * size_of(f32)))
 	gl.VertexAttribPointer(5, 4, gl.FLOAT, false, size_of(Vertex), (11 * size_of(f32)))
+	gl.VertexAttribPointer(6, 4, gl.FLOAT, false, size_of(Vertex), (15 * size_of(f32)))
 }
