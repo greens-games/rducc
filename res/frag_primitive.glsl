@@ -10,7 +10,7 @@ out vec4 FragColor;
 //NOTE: There's definitely a better way to do outlining but for now this works
 void
 main() {
-	float thickness = 0.80;
+	float thickness = 0.90;
 
     vec4 blank = vec4(0.0);
     vec2 uv = pos.xy;

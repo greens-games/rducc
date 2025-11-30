@@ -1,5 +1,6 @@
 package main
 
+import "core:math/rand"
 import "core:time"
 import "rducc"
 import "pducc"
@@ -21,9 +22,15 @@ Entity_Kind :: enum {
 	TOKEN,
 }
 
+Widget_Kind :: enum {
+	BUTTON,
+}
+
 Game_Context :: struct {
 	entities:     [100]Entity,
 	entity_count: i32,
+	widgets:      [100]Widget,
+	widget_count: i32,
 	grid:         [ROWS][COLS]Cell,
 }
 
@@ -36,6 +43,20 @@ Entity :: struct {
 	scale:     [2]f32,
 	collider:  pducc.Collider,
 }
+
+Widget :: struct {
+	id:        i32,
+	kind:      Widget_Kind,
+	pos:       [3]f32,
+	curr_cell: [2]u32,
+	rotation:  f32,
+	scale:     [2]f32,
+	collider:  pducc.Collider,
+	on_interaction: proc()
+}
+
+hot_widget: i32 = -1
+active_widget: i32 = -1
 
 Cell :: struct {
 	occupiers: [3]i32,
@@ -103,14 +124,20 @@ run :: proc() {
 	mouse_entity.collider.kind = .RECT
 	mouse_entity.collider.radius = 4.0
 
-	random_circle: Entity
+	random_circle:Widget
 	random_circle.scale = SPRITE_SCALE
-	random_circle.pos = {100.0, 100.0, 0.0}
+	random_circle.pos = {100.0, 100.0, 1.0}
+	random_circle.kind = .BUTTON
 	random_circle.collider = {}
 	random_circle.collider.scale = SPRITE_SCALE
 	random_circle.collider.kind = .RECT
 	random_circle.collider.radius = 16.0
 	random_circle.collider.origin = {random_circle.pos.x, random_circle.pos.y}
+	random_circle.on_interaction = proc() {
+		fmt.println("Helllo")
+	}
+	game_ctx.widgets[0] = random_circle
+	game_ctx.widget_count += 1
 
 	percy_texture := rducc.renderer_sprite_load("res/scuffed_percy.png")
 	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
@@ -134,9 +161,22 @@ run :: proc() {
 		// TC: PHYSICS
 		mouse_entity.pos = {m_pos.x - 2, m_pos.y - 2, 0.0}
 		mouse_entity.collider.origin = {m_pos.x - 2, m_pos.y - 2}
+		for i in 0..<game_ctx.widget_count {
+			w := game_ctx.widgets[i]
+			if pducc.rect_collision(mouse_entity.collider, w.collider) {
+				hot_widget = w.id
+				break
+			} else {
+				hot_widget = -1
+			}
+		}
 
-		if pducc.rect_collision(mouse_entity.collider, random_circle.collider) {
+		if hot_widget > -1 {
 			colour = rducc.PINK
+			if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
+				active_widget = hot_widget
+				game_ctx.widgets[active_widget].on_interaction()
+			}
 		} else {
 			colour = rducc.GREEN
 		}
@@ -172,13 +212,12 @@ run :: proc() {
 			switch e.kind {
 			case .TOKEN:
 				/* rducc.renderer_sprite_draw(e.pos, e.scale, e.rotation, rducc.WHITE) */
-				rducc.renderer_box(e.pos, e.scale, e.rotation, rducc.BLACK)
+				rducc.renderer_box({e.pos.x, e.pos.y, 10.0}, e.scale, e.rotation, rducc.BLACK)
 			}
 		}
 
 
 		rducc.renderer_box({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
-		/* rducc.renderer_box_lines({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.GREEN) */
 		rducc.renderer_circle_shader(random_circle.pos, random_circle.scale, 0.0, rducc.BLUE)
 		rducc.renderer_box_lines({random_circle.collider.origin.x,random_circle.collider.origin.y, 0.0}, random_circle.collider.scale, 0.0, rducc.RED)
 		rducc.renderer_circle_shader(mouse_entity.pos, mouse_entity.scale, 0.0, colour)

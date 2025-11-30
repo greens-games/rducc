@@ -42,6 +42,7 @@ Context :: struct {
 	mouse_pos:            [2]f32,
 	indices:              []u32,
 	key_input_queue:      [u32(Key.COUNT)]Input_Action,
+	mouse_input_queue:    [u32(Mouse_Button.COUNT)]Input_Action,
 
 	//Textures
 	levels:               i32,

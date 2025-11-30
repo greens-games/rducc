@@ -41,6 +41,7 @@ window_open :: proc(window_width, window_height: i32, name: cstring) {
 	glfw.SetCursorPosCallback(window_handle, mouse_move_callback)
 	glfw.SetKeyCallback(window_handle, key_callback)
 	glfw.SetScrollCallback(window_handle, mouse_scroll_callback)
+	glfw.SetMouseButtonCallback(window_handle, mouse_button_callback)
 
 	ctx.window_width = window_width
 	ctx.window_height = window_height

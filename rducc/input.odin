@@ -138,6 +138,7 @@ Mouse_Button :: enum {
 	MOUSE_BUTTON_LEFT   = 0,
 	MOUSE_BUTTON_RIGHT  = 1,
 	MOUSE_BUTTON_MIDDLE = 2,
+	COUNT
 }
 
 Input_Kind :: enum u8 {
@@ -176,12 +177,24 @@ window_is_mouse_button_down :: proc(mouse_button: Mouse_Button) -> bool {
 	return glfw.GetMouseButton(ctx.window_hndl, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
 }
 
+window_is_mouse_button_pressed :: proc(mouse_button: Mouse_Button) -> bool {
+	mouse_button_state := ctx.mouse_input_queue[mouse_button]
+	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button
+	if mouse_button_state.curr_state == .UP && mouse_button_state.prev_state == .DOWN {
+		 ctx.mouse_input_queue[mouse_button].prev_state = .UP
+		return true
+	}
+	return false
+}
+
 window_mouse_pos :: proc() -> [2]f32{
 	return ctx.mouse_pos
 }
 
 mouse_button_callback :: proc "c" (window: glfw.WindowHandle, button, action, mods: i32){
 	context = runtime.default_context()
+	ctx.mouse_input_queue[button].prev_state = ctx.mouse_input_queue[button].curr_state
+	ctx.mouse_input_queue[button].curr_state = Input_Kind(action)
 }
 
 key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
