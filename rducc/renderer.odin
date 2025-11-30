@@ -541,6 +541,8 @@ renderer_colour_apply :: proc(colour: Colour) -> [4]f32 {
 }
 
 renderer_commit :: proc() {
+
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[0])
 	renderer_vertex_attrib_apply()
 	program_load(.PRIMITIVE)
@@ -550,6 +552,7 @@ renderer_commit :: proc() {
 	renderer_vertex_attrib_apply()
 	program_load(.CIRCLE)
 	gl.DrawArrays(gl.TRIANGLES, 0, ctx.circle_vertices)
+
 	renderer_texture_batch_commit(ctx.curr_texture_hndl)
 
 	ctx.box_vertices = 0

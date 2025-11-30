@@ -42,6 +42,7 @@ Cell :: struct {
 }
 
 SPRITE_SCALE :: [2]f32{32.0, 32.0}
+BASE_SCALE :: [2]f32{16.0, 16.0}
 debug_draw := false
 
 //TODO: Add hot reloading
@@ -95,18 +96,18 @@ run :: proc() {
 	curr_rotation: f32 = 0.
 
 	mouse_entity: Entity
-	mouse_entity.scale = {16.0, 16.0}
+	mouse_entity.scale = {4.0, 4.0}
 	mouse_entity.id = 0
 	mouse_entity.collider = {}
-	mouse_entity.collider.scale = {16.0, 16.0}
+	mouse_entity.collider.scale = {4.0, 4.0}
 	mouse_entity.collider.kind = .RECT
-	mouse_entity.collider.radius = 16.0
+	mouse_entity.collider.radius = 4.0
 
 	random_circle: Entity
-	random_circle.scale = {32.0, 32.0}
+	random_circle.scale = SPRITE_SCALE
 	random_circle.pos = {100.0, 100.0, 0.0}
 	random_circle.collider = {}
-	random_circle.collider.scale = {32.0, 32.0}
+	random_circle.collider.scale = SPRITE_SCALE
 	random_circle.collider.kind = .RECT
 	random_circle.collider.radius = 16.0
 	random_circle.collider.origin = {random_circle.pos.x, random_circle.pos.y}
@@ -131,8 +132,8 @@ run :: proc() {
 		}
 
 		// TC: PHYSICS
-		mouse_entity.pos = {m_pos.x - 8, m_pos.y - 8, 0.0}
-		mouse_entity.collider.origin = m_pos.xy
+		mouse_entity.pos = {m_pos.x - 2, m_pos.y - 2, 0.0}
+		mouse_entity.collider.origin = {m_pos.x - 2, m_pos.y - 2}
 
 		if pducc.rect_collision(mouse_entity.collider, random_circle.collider) {
 			colour = rducc.PINK
@@ -177,9 +178,11 @@ run :: proc() {
 
 
 		rducc.renderer_box({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
-		rducc.renderer_box_lines({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.GREEN)
-		rducc.renderer_circle_shader({100.0,100.0,0.0}, {32.0, 32.0}, 0.0, rducc.BLUE)
-		rducc.renderer_circle_shader({m_pos.x - 8, m_pos.y - 8, 0.0}, {16.0, 16.0}, 0.0, colour)
+		/* rducc.renderer_box_lines({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.GREEN) */
+		rducc.renderer_circle_shader(random_circle.pos, random_circle.scale, 0.0, rducc.BLUE)
+		rducc.renderer_box_lines({random_circle.collider.origin.x,random_circle.collider.origin.y, 0.0}, random_circle.collider.scale, 0.0, rducc.RED)
+		rducc.renderer_circle_shader(mouse_entity.pos, mouse_entity.scale, 0.0, colour)
+		rducc.renderer_box_lines({mouse_entity.collider.origin.x,mouse_entity.collider.origin.y, 0.0}, mouse_entity.scale, 0.0, rducc.PINK)
 		rducc.renderer_sprite_draw(percy_texture, {150.0,150.0,1.0}, {32.0,32.0})
 		rducc.renderer_sprite_draw(player_filled_texture, {180.0,350.0,1.0}, {32.0,32.0})
 		rducc.renderer_sprite_draw(percy_texture, {150.0,370.0,1.0}, {32.0,32.0})
