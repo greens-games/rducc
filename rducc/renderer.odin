@@ -370,63 +370,6 @@ renderer_circle_outline_shader :: proc(
 	program_load(Shader_Progams.PRIMITIVE)
 }
 
-//Read in some file
-//Allocate Texture to Texture Array
-//Return texture data
-renderer_sprite_texture_array_load :: proc(f_name: cstring)  -> Ducc_Texture {
-	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
-	height, width, channels_in_file: i32
-	stbi.set_flip_vertically_on_load(1)
-	data := stbi.load(f_name, &height, &width, &channels_in_file, 4)
-	texture_hndl: u32
-	gl.GenTextures(1, &TEXTURE_HNDL)
-	gl.BindTexture(gl.TEXTURE_2D_ARRAY, TEXTURE_HNDL)
-	gl.TextureStorage3D(TEXTURE_HNDL, 2, gl.RGBA8, 16, 16, 2)
-
-	texture: Ducc_Texture
-	texture.data   = data
-	texture.height = height
-	texture.width  = width
-	texture.hndl   = TEXTURE_HNDL
-	texture.level  = ctx.curr_level
-	ctx.curr_level += 1
-	return texture
-}
-
-//Takes in position data, and texture data to be drawn
-renderer_sprite_texture_array_draw :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
-	/* gl.TextureSubImage2D(texture.hndl, 0, 0, 0, texture.width, texture.height, gl.RGBA, gl.UNSIGNED_BYTE, texture.data) */
-	/* gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data) */
-	gl.TextureSubImage3D(texture.hndl, 0, 0, 0, 0, texture.width, texture.height, texture.level, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
-	/* gl.TexImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, texture.height, texture.width, texture.level, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data) */
-	vertices := [?]Vertex {
-		//1
-		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {1.0, 1.0}},
-		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 0.0}},
-		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 1.0}},
-		//2
-		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 0.0}},
-		{pos_coords = {-1.0, -1.0, 0.0}, texture_coords = {0.0, 0.0}},
-		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 1.0}},
-	}
-
-	for &vert in vertices {
-		vert.pos      = pos
-		vert.scale    = scale
-		vert.rotation = rotation
-		vert.colour   = renderer_colour_apply(colour)
-	}
-
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		int(ctx.texture_vertices) * size_of(Vertex),
-		size_of(vertices),
-		&vertices,
-	)
-	ctx.texture_vertices += len(vertices)
-}
-
 renderer_sprite_atlas_load :: proc(f_name: cstring, sprite_size: [2]f32) -> Ducc_Texture_Atlas {
 	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
 	height, width, channels_in_file: i32
