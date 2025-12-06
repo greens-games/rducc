@@ -427,7 +427,7 @@ renderer_sprite_texture_array_draw :: proc(texture: Ducc_Texture, pos: [3]f32, s
 	ctx.texture_vertices += len(vertices)
 }
 
-renderer_sprite_atlas_load :: proc(f_name: cstring) -> Ducc_Texture {
+renderer_sprite_atlas_load :: proc(f_name: cstring, sprite_size: [2]f32) -> Ducc_Texture_Atlas {
 	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
 	height, width, channels_in_file: i32
 	stbi.set_flip_vertically_on_load(1)
@@ -442,12 +442,13 @@ renderer_sprite_atlas_load :: proc(f_name: cstring) -> Ducc_Texture {
 	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
-	texture: Ducc_Texture
-	texture.data   = data
-	texture.height = height
-	texture.width  = width
-	texture.hndl   = texture_hndl
-	return texture
+	texture_atlas: Ducc_Texture_Atlas
+	texture_atlas.data        = data
+	texture_atlas.height      = height
+	texture_atlas.width       = width
+	texture_atlas.hndl        = texture_hndl
+	texture_atlas.sprite_size = sprite_size
+	return texture_atlas
 }
 
 //Read in some file name

@@ -140,7 +140,8 @@ run :: proc() {
 	game_ctx.widget_count += 1
 
 	percy_texture := rducc.renderer_sprite_load("res/scuffed_percy.png")
-	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
+	/* player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png") */
+	player_filled_texture := rducc.renderer_sprite_load("res/Font1.bff")
 
 	colour := rducc.GREEN
 

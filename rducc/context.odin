@@ -58,7 +58,14 @@ Ducc_Texture :: struct {
 	data:   [^]byte,
 	height: i32,
 	width:  i32,
-	level:  i32,
+}
+
+Ducc_Texture_Atlas :: struct {
+	hndl:        u32,
+	data:        [^]byte,
+	height:      i32,
+	width:       i32,
+	sprite_size: [2]f32,
 }
 
 //TODO: This probably shouldn't be a static global, maybe make it a pointer you can pass around when needed on init?
