@@ -140,8 +140,10 @@ run :: proc() {
 	game_ctx.widget_count += 1
 
 	percy_texture := rducc.renderer_sprite_load("res/scuffed_percy.png")
-	/* player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png") */
-	player_filled_texture := rducc.renderer_sprite_load("res/Font1.bff")
+	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
+	font1_atlas := rducc.renderer_sprite_atlas_load("res/Font2.bmp", 32)
+	font1 := rducc.renderer_font_bmp_load("res/Font2.bmp", 33, 32)
+	font_texture := rducc.renderer_sprite_load("res/Font1.bmp")
 
 	colour := rducc.GREEN
 
@@ -218,7 +220,7 @@ run :: proc() {
 		}
 
 
-		rducc.renderer_box({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
+		/* rducc.renderer_box({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
 		rducc.renderer_circle_shader(random_circle.pos, random_circle.scale, 0.0, rducc.BLUE)
 		rducc.renderer_box_lines({random_circle.collider.origin.x,random_circle.collider.origin.y, 0.0}, random_circle.collider.scale, 0.0, rducc.RED)
 		rducc.renderer_circle_shader(mouse_entity.pos, mouse_entity.scale, 0.0, colour)
@@ -230,7 +232,10 @@ run :: proc() {
 		rducc.renderer_sprite_draw(player_filled_texture, {350.0,350.0,1.0}, {32.0,32.0})
 		rducc.renderer_sprite_draw(player_filled_texture, {460.0,350.0,1.0}, {32.0,32.0})
 		rducc.renderer_sprite_draw(player_filled_texture, {570.0,350.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_draw(player_filled_texture, {280.0,350.0,1.0}, {32.0,32.0})
+		rducc.renderer_sprite_draw(player_filled_texture, {280.0,350.0,1.0}, {32.0,32.0}) */
+		rducc.renderer_sprite_draw(font_texture, {0.0, 0.0, 0.0}, {320.0, 320.0})
+		rducc.renderer_sprite_atlas_draw(font1_atlas, {500.0, 500.0, 0.0}, {32.0, 32.0}, {1, 1})
+		rducc.renderer_font_draw(font1, "a", {600.0, 500.0}, 32)
 		rducc.renderer_commit()
 
 		//TC: CLEANUP
