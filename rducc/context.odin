@@ -70,7 +70,16 @@ Ducc_Texture_Atlas :: struct {
 	sprite_size: i32,
 }
 
-Ducc_Font :: distinct Ducc_Texture_Atlas
+Ducc_Font :: struct {
+	hndl:        u32,
+	data:        [^]byte,
+	height:      i32,
+	width:       i32,
+	rows:        i32,
+	cols:        i32,
+	sprite_size: i32,
+	offset:      i32,
+}
 
 //TODO: This probably shouldn't be a static global, maybe make it a pointer you can pass around when needed on init?
 // That being said the consumer probably shouldn't care too much about this context it's more for the platform layer and/or renderer to use to do stuff
