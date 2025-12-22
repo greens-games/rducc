@@ -398,26 +398,28 @@ renderer_sprite_atlas_load :: proc(f_name: cstring, sprite_size: i32) -> Ducc_Te
 	return texture_atlas
 }
 
-//Takes in position data, and texture data to be drawn
-renderer_sprite_atlas_draw :: proc(texture: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32, idx: [2]i32, rotation: f32 = 0.0, colour := WHITE) {
+//Takes in position data, texture data to be drawn, and index into the atlas from top down
+//i.e 0,0 will be top left. atlas.rows - 1, atlas.cols - 1 will be bottom right
+renderer_sprite_atlas_draw :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32, idx: [2]i32, rotation: f32 = 0.0, colour := WHITE) {
 	if (ctx.curr_texture_hndl == 0) {
-		gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
-		ctx.curr_texture_hndl = texture.hndl
-	} else if (texture.hndl != ctx.curr_texture_hndl) {
+		gl.BindTexture(gl.TEXTURE_2D, atlas.hndl)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, atlas.height, atlas.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, atlas.data)
+		ctx.curr_texture_hndl = atlas.hndl
+	} else if (atlas.hndl != ctx.curr_texture_hndl) {
 		renderer_texture_batch_commit(ctx.curr_texture_hndl)
-		gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
-		ctx.curr_texture_hndl = texture.hndl
+		gl.BindTexture(gl.TEXTURE_2D, atlas.hndl)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, atlas.height, atlas.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, atlas.data)
+		ctx.curr_texture_hndl = atlas.hndl
 	}
 
 	//This should use idx and rows/cols instead of width/height and sprite_size
 	//Ex: bottom left is 0 - 0.1250 (x,y)
-	offset := 1.0/f32(texture.rows)
+	offset := 1.0/f32(atlas.rows)
 
 	//Top down
-	y_offset := f32(texture.rows - idx.y) * offset
-	y_offset_minus_one := f32(texture.rows - idx.y - 1) * offset
+	//TODO: Document what these values are meant to represent
+	y_offset := f32(atlas.rows - idx.y) * offset
+	y_offset_minus_one := f32(atlas.rows - idx.y - 1) * offset
 	x_offset := f32(idx.x) * offset
 	x_offset_plus_one := f32(idx.x + 1) * offset
 	vertices := [?]Vertex {
@@ -540,10 +542,15 @@ renderer_font_bmp_load :: proc(font_path: cstring, offset: i32, sprite_size: i32
 	font.rows = texture.height/sprite_size
 	font.cols = texture.width/sprite_size
 	font.sprite_size = sprite_size
+	font.offset = offset
 
 	return font
 }
 
+/**
+take in a loaded font, line of text, position, font_size, and colour
+currently maps the font to a texture atlas and calls the renderer's texture atlas draw proc
+*/
 renderer_font_draw :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size: f32, colour: Colour = WHITE) {
 	texture: Ducc_Texture_Atlas = {
 		hndl = font.hndl,
@@ -552,15 +559,14 @@ renderer_font_draw :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size
 		width = font.width,
 		rows = font.rows,
 		cols = font.cols,
+		sprite_size = font.sprite_size
 	}
 	upper_text := strings.to_upper(text, context.temp_allocator)
 	for c, i in upper_text {
-		offset_c := c - 32
-		idx_y    := offset_c / 8
-		adj_cols := ((font.rows) * i32(idx_y))
-		normalized_offset := (i32(offset_c) - adj_cols)
-		idx_x := normalized_offset % (font.rows)
-
+		offset_c := i32(c) - font.offset //offset our character so it can be indexed into the array
+		idx_y    := offset_c / 8 //find the row in our atlas from top to bottom
+		adj_cols := ((font.cols) * i32(idx_y)) //find the starting point for the row in our imaginary flat array
+		normalized_offset := (i32(offset_c) - adj_cols) //normalize our char index to be 0 to (cols- 1) so we can index into the row
 		renderer_sprite_atlas_draw(texture, {pos.x + f32((i32(i) * i32(font_size))), pos.y, 0.0}, {font_size, font_size}, {i32(normalized_offset), i32(idx_y)}, colour = colour)
 	}
 }
