@@ -49,3 +49,7 @@
 
 ## Plans
 - Possibly use the renderer to build a game
+
+## Other fun stuff
+- First understand the existing odin context allocators and what they are doing
+- Write own context allocator for an Arena
