@@ -75,10 +75,12 @@ window_width :: proc() -> i32 {
 }
 
 resize_callback :: proc "c" (window: glfw.WindowHandle, width: c.int, height: c.int) {
+	context = runtime.default_context()
 	//TODO: This should be render agnostic
 	ctx.window_height = height
 	ctx.window_width = width
 	gl.Viewport(0, 0, width, height)
+	renderer_projection_set()
 }
 
 window_close :: proc() -> bool {
@@ -87,6 +89,7 @@ window_close :: proc() -> bool {
 	}
 
 	glfw.PollEvents()
+	ctx.mouse_clicked = false
 	glfw.SwapBuffers(ctx.window_hndl)
 	return bool(glfw.WindowShouldClose(ctx.window_hndl))
 }

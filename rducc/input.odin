@@ -182,9 +182,9 @@ window_is_mouse_button_pressed :: proc(mouse_button: Mouse_Button) -> bool {
 	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button
 	if mouse_button_state.curr_state == .UP && mouse_button_state.prev_state == .DOWN {
 		 ctx.mouse_input_queue[mouse_button].prev_state = .UP
-		return true
+		ctx.mouse_clicked = true
 	}
-	return false
+	return ctx.mouse_clicked
 }
 
 window_mouse_pos :: proc() -> [2]f32{

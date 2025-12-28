@@ -4,9 +4,6 @@
 
 
 ## Today's tasks
-- Box outline batching
-- Circle outline batching
-- Drag and drop
 
 ## Current tasks
 - Renderer
@@ -29,7 +26,8 @@
 
 ## Renderer TODOs
 - If gpu buffer is going to be full, commit a draw now then start filling again
-- Do we want to start drawing from middle? we currently draw from bot left (For this we would change the mvp stuff I believe)
+- Do we want to start drawing from middle?
+    - we currently draw from bot left (For this we would change the mvp stuff I believe)
 - Either bring back order based rendering OR fix z-indexing
 - Draw Polygons
 - Draw text (start with bitmap fonts)

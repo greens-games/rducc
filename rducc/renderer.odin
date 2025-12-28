@@ -98,6 +98,7 @@ TEXTURE_HNDL:  u32
 renderer_init :: proc() {
 	gl.load_up_to(4, 6, glfw.gl_set_proc_address) //required for proc address stuff
 	gl.Viewport(0, 0, ctx.window_width, ctx.window_height)
+	/* gl.Viewport(0, ctx.window_height, ctx.window_width, 0) */
 	gl.Enable(gl.DEBUG_OUTPUT)
 	gl.Enable(gl.DEBUG_OUTPUT_SYNCHRONOUS)
 	gl.DebugMessageCallback(debug_proc_t, {})
@@ -154,6 +155,12 @@ renderer_init :: proc() {
 	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 	shader_load("res/vert_grid.glsl", "res/grid.glsl")
+
+	renderer_projection_set()
+}
+
+renderer_projection_set :: proc() {
+	//Bottom left orientation
 	projection := glm.mat4Ortho3d(
 		0.0,
 		f32(ctx.window_width),
@@ -162,6 +169,16 @@ renderer_init :: proc() {
 		-100.0,
 		100.0,
 	)
+
+	//Top-Left orientation
+	/* projection := glm.mat4Ortho3d(
+		0.0,
+		f32(ctx.window_width),
+		f32(ctx.window_height),
+		0.0,
+		-100.0,
+		100.0,
+	) */
 	program_load(Shader_Progams.CIRCLE)
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
 	program_load(Shader_Progams.PRIMITIVE)
@@ -231,7 +248,7 @@ renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 	/* gl.DrawElements(gl.TRIANGLES, 1, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 }
 
-renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+renderer_box_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[i32(Shader_Progams.PRIMITIVE)])
 
 	v := vertices_index_box
@@ -258,7 +275,7 @@ renderer_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := 
 	ctx.box_vertices += len(vertices_index_box)
 }
 
-renderer_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+renderer_box_lines_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[i32(Shader_Progams.PRIMITIVE)])
 
 	v := vertices_index_box
@@ -327,7 +344,7 @@ renderer_polygon_sides :: proc(
 	/* gl.DrawArrays(gl.TRIANGLE_FAN, 0, 5) */
 }
 
-renderer_circle_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+renderer_circle_draw :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[i32(Shader_Progams.CIRCLE)])
 
 	v := vertices_index_box
@@ -353,7 +370,7 @@ renderer_circle_shader :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0,
 	ctx.circle_vertices += len(vertices_index_box)
 }
 
-renderer_circle_outline_shader :: proc(
+renderer_circle_outline_draw :: proc(
 	pos: [3]f32,
 	radius: [2]f32,
 	rotation: f32 = 0.0,
@@ -531,6 +548,10 @@ renderer_grid_draw :: proc(colour := PINK) {
 	program_load(Shader_Progams.PRIMITIVE)
 }
 
+renderer_font_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
+	return renderer_font_bmp_load(font_path, offset, sprite_size)
+}
+
 renderer_font_bmp_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
 	texture := renderer_sprite_atlas_load(font_path, sprite_size)
 	
@@ -551,7 +572,7 @@ renderer_font_bmp_load :: proc(font_path: cstring, offset: i32, sprite_size: i32
 take in a loaded font, line of text, position, font_size, and colour
 currently maps the font to a texture atlas and calls the renderer's texture atlas draw proc
 */
-renderer_font_draw :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size: f32, colour: Colour = WHITE) {
+renderer_text_draw :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size: f32, colour: Colour = WHITE) {
 	texture: Ducc_Texture_Atlas = {
 		hndl = font.hndl,
 		data = font.data,
@@ -581,7 +602,6 @@ renderer_colour_apply :: proc(colour: Colour) -> [4]f32 {
 }
 
 renderer_commit :: proc() {
-
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[0])
 	renderer_vertex_attrib_apply()

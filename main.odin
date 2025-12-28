@@ -28,11 +28,14 @@ Widget_Kind :: enum {
 	BUTTON,
 }
 
+Position_Kind :: enum {
+	RELATIVE,
+	ABSOLUTE,
+}
+
 Game_Context :: struct {
 	entities:     [100]Entity,
 	entity_count: i32,
-	widgets:      [100]Widget,
-	widget_count: i32,
 	grid:         [ROWS][COLS]Cell,
 }
 
@@ -112,6 +115,44 @@ pos_to_cell :: proc(pos: [3]f32) -> [2]u32 {
 	return {u32(math.round_f32(pos.x/SPRITE_SCALE.x)), u32(math.round_f32(pos.y/SPRITE_SCALE.y))}
 }
 
+/*
+RELATIVE = percentage relative to window size
+ABSOLUTTE = x,y as is
+*/
+widget_button :: proc(button_pos, button_size, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
+	clicked := false
+	_pos := button_pos
+	switch pos_kind {
+	case .RELATIVE:
+		_pos.x = f32(rducc.ctx.window_width)  * (button_pos.x / 100.0)
+		_pos.y = f32(rducc.ctx.window_height) * (button_pos.y / 100.0)
+	case .ABSOLUTE:
+	}
+	mouse_collider: pducc.Collider 
+	mouse_collider = {}
+	mouse_collider.scale = {4.0, 4.0}
+	mouse_collider.kind = .RECT
+	mouse_collider.origin = mouse_pos
+
+	button_collider: pducc.Collider = {}
+	button_collider.origin = _pos
+	button_collider.scale = button_size
+	button_collider.kind = .RECT
+	colour := rducc.BLUE
+
+	if pducc.rect_collision(mouse_collider, button_collider) {
+		colour = rducc.GREEN
+		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
+			fmt.println("HIT THE BUTTON")
+			clicked = true
+		}
+	}
+
+	rducc.renderer_box_draw({_pos.x, _pos.y, 0.0}, button_size, colour = colour)
+
+	return clicked
+}
+
 run :: proc() {
 	game_ctx := game_context_init()
 	rducc.window_open(980,620,"RDUCC DEMO")
@@ -138,13 +179,11 @@ run :: proc() {
 	random_circle.on_interaction = proc() {
 		fmt.println("Helllo")
 	}
-	game_ctx.widgets[0] = random_circle
-	game_ctx.widget_count += 1
 
 	percy_texture := rducc.renderer_sprite_load("res/scuffed_percy.png")
 	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
 	font1_atlas := rducc.renderer_sprite_atlas_load("res/Font3.bmp", 32)
-	font1 := rducc.renderer_font_bmp_load("res/Font3.bmp", 32, 32)
+	font1 := rducc.renderer_font_load("res/Font3.bmp", 32, 32)
 	font_texture := rducc.renderer_sprite_load("res/Font1.bmp")
 
 	colour := rducc.GREEN
@@ -155,7 +194,8 @@ run :: proc() {
 		dt := rducc.time_delta_get()
 
 		//TC: INPUT
-		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) {
+		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
+			fmt.println("MOUSE CLICKED")
 		}
 		if rducc.window_is_key_pressed(.KEY_GRAVE_ACCENT) {
 			debug_draw = !debug_draw
@@ -166,27 +206,7 @@ run :: proc() {
 		// TC: PHYSICS
 		mouse_entity.pos = {m_pos.x - 2, m_pos.y - 2, 0.0}
 		mouse_entity.collider.origin = {m_pos.x - 2, m_pos.y - 2}
-		for i in 0..<game_ctx.widget_count {
-			w := game_ctx.widgets[i]
-			if pducc.rect_collision(mouse_entity.collider, w.collider) {
-				hot_widget = w.id
-				break
-			} else {
-				hot_widget = -1
-			}
-		}
-
-		if hot_widget > -1 {
-			colour = rducc.PINK
-			if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
-				active_widget = hot_widget
-				game_ctx.widgets[active_widget].on_interaction()
-			}
-		} else {
-			colour = rducc.GREEN
-		}
-
-
+		
 		//TC: Assign Grid Cells
 		for idx in 0..< game_ctx.entity_count {
 			entity := &game_ctx.entities[idx]
@@ -201,13 +221,16 @@ run :: proc() {
 
 		//TC: RENDER
 		rducc.renderer_background_clear(rducc.GRAY)
+		widget_button({50, 50}, {32,32}, m_pos, .RELATIVE)
+		widget_button({500, 500}, {32,32}, m_pos, .ABSOLUTE)
+		widget_button({200, 200}, {32,32}, m_pos, .RELATIVE)
 
 		for row, r in game_ctx.grid {
 			for col, c in row {
 				if col.occupiers[0] != -1 {
 					colour: rducc.Colour
 					colour = {255,255,255,125}
-					rducc.renderer_box({f32(c) * SPRITE_SCALE.x, f32(r) * SPRITE_SCALE.y, 0.0}, SPRITE_SCALE, colour = colour)
+					rducc.renderer_box_draw({f32(c) * SPRITE_SCALE.x, f32(r) * SPRITE_SCALE.y, 0.0}, SPRITE_SCALE, colour = colour)
 				}
 			}
 		}
@@ -217,26 +240,18 @@ run :: proc() {
 			switch e.kind {
 			case .TOKEN:
 				/* rducc.renderer_sprite_draw(e.pos, e.scale, e.rotation, rducc.WHITE) */
-				rducc.renderer_box({e.pos.x, e.pos.y, 10.0}, e.scale, e.rotation, rducc.BLACK)
+				rducc.renderer_box_draw({e.pos.x, e.pos.y, 10.0}, e.scale, e.rotation, rducc.BLACK)
 			}
 		}
 
 
-		rducc.renderer_box({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
-		rducc.renderer_circle_shader(random_circle.pos, random_circle.scale, 0.0, rducc.BLUE)
-		rducc.renderer_box_lines({random_circle.collider.origin.x,random_circle.collider.origin.y, 0.0}, random_circle.collider.scale, 0.0, rducc.RED)
-		rducc.renderer_circle_shader(mouse_entity.pos, mouse_entity.scale, 0.0, colour)
-		rducc.renderer_box_lines({mouse_entity.collider.origin.x,mouse_entity.collider.origin.y, 0.0}, mouse_entity.scale, 0.0, rducc.PINK)
+		rducc.renderer_box_draw({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
+		rducc.renderer_circle_draw(random_circle.pos, random_circle.scale, 0.0, rducc.BLUE)
+		rducc.renderer_box_lines_draw({random_circle.collider.origin.x,random_circle.collider.origin.y, 0.0}, random_circle.collider.scale, 0.0, rducc.RED)
+		rducc.renderer_circle_draw(mouse_entity.pos, mouse_entity.scale, 0.0, colour)
+		rducc.renderer_box_lines_draw({mouse_entity.collider.origin.x,mouse_entity.collider.origin.y, 0.0}, mouse_entity.scale, 0.0, rducc.PINK)
 		rducc.renderer_sprite_draw(percy_texture, {150.0,150.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_draw(player_filled_texture, {180.0,350.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_draw(percy_texture, {150.0,370.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_draw(percy_texture, {150.0,290.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_draw(player_filled_texture, {350.0,350.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_draw(player_filled_texture, {460.0,350.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_draw(player_filled_texture, {570.0,350.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_draw(player_filled_texture, {280.0,350.0,1.0}, {32.0,32.0})
-		rducc.renderer_sprite_atlas_draw(font1_atlas, {500.0, 500.0, 0.0}, {32.0, 32.0}, {1, 4}, colour = rducc.RED)
-		rducc.renderer_font_draw(font1, "Hello World!", {600.0, 500.0}, 32, colour = rducc.RED)
+		rducc.renderer_text_draw(font1, "Hello World!", {600.0, 500.0}, 32)
 		rducc.renderer_commit()
 
 		//TC: CLEANUP
