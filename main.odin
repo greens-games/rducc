@@ -40,13 +40,14 @@ Game_Context :: struct {
 }
 
 Entity :: struct {
-	id:        i32,
-	kind:      Entity_Kind,
-	pos:       [3]f32,
-	curr_cell: [2]u32,
-	rotation:  f32,
-	scale:     [2]f32,
-	collider:  pducc.Collider,
+	id:         i32,
+	kind:       Entity_Kind,
+	texture:    ^rducc.Ducc_Texture,
+	pos:        [3]f32,
+	curr_cell:  [2]u32,
+	rotation:   f32,
+	scale:      [2]f32,
+	collider:   pducc.Collider,
 }
 
 Widget :: struct {
@@ -115,43 +116,6 @@ pos_to_cell :: proc(pos: [3]f32) -> [2]u32 {
 	return {u32(math.round_f32(pos.x/SPRITE_SCALE.x)), u32(math.round_f32(pos.y/SPRITE_SCALE.y))}
 }
 
-/*
-RELATIVE = percentage relative to window size
-ABSOLUTTE = x,y as is
-*/
-widget_button :: proc(button_pos, button_size, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
-	clicked := false
-	_pos := button_pos
-	switch pos_kind {
-	case .RELATIVE:
-		_pos.x = f32(rducc.ctx.window_width)  * (button_pos.x / 100.0)
-		_pos.y = f32(rducc.ctx.window_height) * (button_pos.y / 100.0)
-	case .ABSOLUTE:
-	}
-	mouse_collider: pducc.Collider 
-	mouse_collider = {}
-	mouse_collider.scale = {4.0, 4.0}
-	mouse_collider.kind = .RECT
-	mouse_collider.origin = mouse_pos
-
-	button_collider: pducc.Collider = {}
-	button_collider.origin = _pos
-	button_collider.scale = button_size
-	button_collider.kind = .RECT
-	colour := rducc.BLUE
-
-	if pducc.rect_collision(mouse_collider, button_collider) {
-		colour = rducc.GREEN
-		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
-			fmt.println("HIT THE BUTTON")
-			clicked = true
-		}
-	}
-
-	rducc.renderer_box_draw({_pos.x, _pos.y, 0.0}, button_size, colour = colour)
-
-	return clicked
-}
 
 run :: proc() {
 	game_ctx := game_context_init()
@@ -167,24 +131,22 @@ run :: proc() {
 	mouse_entity.collider.kind = .RECT
 	mouse_entity.collider.radius = 4.0
 
-	random_circle:Widget
-	random_circle.scale = SPRITE_SCALE
-	random_circle.pos = {100.0, 100.0, 1.0}
-	random_circle.kind = .BUTTON
-	random_circle.collider = {}
-	random_circle.collider.scale = SPRITE_SCALE
-	random_circle.collider.kind = .RECT
-	random_circle.collider.radius = 16.0
-	random_circle.collider.origin = {random_circle.pos.x, random_circle.pos.y}
-	random_circle.on_interaction = proc() {
-		fmt.println("Helllo")
-	}
-
-	percy_texture := rducc.renderer_sprite_load("res/scuffed_percy.png")
+	percy_texture := new(rducc.Ducc_Texture)
+	percy_texture^ = rducc.renderer_sprite_load("res/scuffed_percy.png")
 	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
 	font1_atlas := rducc.renderer_sprite_atlas_load("res/Font3.bmp", 32)
 	font1 := rducc.renderer_font_load("res/Font3.bmp", 32, 32)
 	font_texture := rducc.renderer_sprite_load("res/Font1.bmp")
+
+	percy_entity: Entity
+	percy_entity.texture = percy_texture
+	percy_entity.scale = SPRITE_SCALE
+	percy_entity.pos = {150.0, 150.0, 1.0}
+	percy_entity.id = 0
+	percy_entity.collider = {}
+	percy_entity.collider.scale = {4.0, 4.0}
+	percy_entity.collider.kind = .RECT
+	percy_entity.collider.radius = 4.0
 
 	colour := rducc.GREEN
 
@@ -221,7 +183,14 @@ run :: proc() {
 
 		//TC: RENDER
 		rducc.renderer_background_clear(rducc.GRAY)
-		widget_button({50, 50}, {32,32}, m_pos, .RELATIVE)
+		if widget_button({50, 50}, {32,32}, m_pos, .RELATIVE) {
+			fmt.println("Activated button")
+		}
+
+		if widget_token(percy_entity, m_pos, .ABSOLUTE) {
+			percy_entity.pos = {m_pos.x, m_pos.y, 0.0}
+		}
+
 		widget_button({500, 500}, {32,32}, m_pos, .ABSOLUTE)
 		widget_button({200, 200}, {32,32}, m_pos, .RELATIVE)
 
@@ -246,11 +215,9 @@ run :: proc() {
 
 
 		rducc.renderer_box_draw({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
-		rducc.renderer_circle_draw(random_circle.pos, random_circle.scale, 0.0, rducc.BLUE)
-		rducc.renderer_box_lines_draw({random_circle.collider.origin.x,random_circle.collider.origin.y, 0.0}, random_circle.collider.scale, 0.0, rducc.RED)
 		rducc.renderer_circle_draw(mouse_entity.pos, mouse_entity.scale, 0.0, colour)
 		rducc.renderer_box_lines_draw({mouse_entity.collider.origin.x,mouse_entity.collider.origin.y, 0.0}, mouse_entity.scale, 0.0, rducc.PINK)
-		rducc.renderer_sprite_draw(percy_texture, {150.0,150.0,1.0}, {32.0,32.0})
+		/* rducc.renderer_sprite_draw(percy_texture^, percy_entity.pos, percy_entity.scale) */
 		rducc.renderer_text_draw(font1, "Hello World!", {600.0, 500.0}, 32)
 		rducc.renderer_commit()
 
@@ -266,6 +233,81 @@ clamp_pos :: proc(pos: [3]f32, velocity: [2]f32) -> [3]f32 {
 	_pos.y = clamp(_pos.y + velocity.y, 0.0, (ROWS - 1.0) * SPRITE_SCALE.y)
 	return _pos
 }
+
+/*
+RELATIVE = percentage relative to window size
+ABSOLUTTE = x,y as is
+*/
+widget_button :: proc(button_pos, button_size, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
+	clicked := false
+	_pos := button_pos
+	switch pos_kind {
+	case .RELATIVE:
+		_pos.x = f32(rducc.ctx.window_width)  * (button_pos.x / 100.0)
+		_pos.y = f32(rducc.ctx.window_height) * (button_pos.y / 100.0)
+	case .ABSOLUTE:
+	}
+	mouse_collider: pducc.Collider 
+	mouse_collider = {}
+	mouse_collider.scale = {4.0, 4.0}
+	mouse_collider.kind = .RECT
+	mouse_collider.origin = mouse_pos
+
+	button_collider: pducc.Collider = {}
+	button_collider.origin = _pos
+	button_collider.scale = button_size
+	button_collider.kind = .RECT
+	colour := rducc.BLUE
+
+	if pducc.rect_collision(mouse_collider, button_collider) {
+		colour = rducc.GREEN
+		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
+			clicked = true
+		}
+	}
+
+	rducc.renderer_box_draw({_pos.x, _pos.y, 0.0}, button_size, colour = colour)
+
+	return clicked
+}
+
+/*
+RELATIVE = percentage relative to window size
+ABSOLUTTE = x,y as is
+*/
+widget_token :: proc(entity:Entity, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
+	clicked := false
+	_pos := entity.pos
+	switch pos_kind {
+	case .RELATIVE:
+		_pos.x = f32(rducc.ctx.window_width)  * (entity.pos.x / 100.0)
+		_pos.y = f32(rducc.ctx.window_height) * (entity.pos.y / 100.0)
+	case .ABSOLUTE:
+	}
+	mouse_collider: pducc.Collider 
+	mouse_collider = {}
+	mouse_collider.scale = {4.0, 4.0}
+	mouse_collider.kind = .RECT
+	mouse_collider.origin = mouse_pos
+
+	button_collider: pducc.Collider = {}
+	button_collider.origin = _pos.xy
+	button_collider.scale = entity.scale
+	button_collider.kind = .RECT
+	colour := rducc.BLUE
+
+	if pducc.rect_collision(mouse_collider, button_collider) {
+		colour = rducc.GREEN
+		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) {
+			clicked = true
+		}
+	}
+
+	rducc.renderer_sprite_draw(entity.texture^, entity.pos, entity.scale)
+
+	return clicked
+}
+
 
 debug_profile :: proc(a: rawptr, msg: string) {
 	start := time.now()
