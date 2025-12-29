@@ -134,7 +134,6 @@ run :: proc() {
 	percy_texture := new(rducc.Ducc_Texture)
 	percy_texture^ = rducc.renderer_sprite_load("res/scuffed_percy.png")
 	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
-	font1_atlas := rducc.renderer_sprite_atlas_load("res/Font3.bmp", 32)
 	font1 := rducc.renderer_font_load("res/Font3.bmp", 32, 32)
 	font_texture := rducc.renderer_sprite_load("res/Font1.bmp")
 
@@ -214,10 +213,7 @@ run :: proc() {
 		}
 
 
-		rducc.renderer_box_draw({50.0,50.0,1.0}, {32.0,32.0}, 0.0, rducc.RED)
-		rducc.renderer_circle_draw(mouse_entity.pos, mouse_entity.scale, 0.0, colour)
-		rducc.renderer_box_lines_draw({mouse_entity.collider.origin.x,mouse_entity.collider.origin.y, 0.0}, mouse_entity.scale, 0.0, rducc.PINK)
-		/* rducc.renderer_sprite_draw(percy_texture^, percy_entity.pos, percy_entity.scale) */
+		rducc.renderer_circle_draw({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED)
 		rducc.renderer_text_draw(font1, "Hello World!", {600.0, 500.0}, 32)
 		rducc.renderer_commit()
 

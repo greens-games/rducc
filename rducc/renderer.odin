@@ -402,7 +402,6 @@ renderer_sprite_atlas_load :: proc(f_name: cstring, sprite_size: i32) -> Ducc_Te
 	gl.GenTextures(1, &texture_hndl)
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
-	gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	texture_atlas: Ducc_Texture_Atlas
 	texture_atlas.data        = data
