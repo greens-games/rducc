@@ -131,6 +131,10 @@ run :: proc() {
 	mouse_entity.collider.kind = .RECT
 	mouse_entity.collider.radius = 4.0
 
+	//TODO: Decide how we want to handle storing textures
+	//Can be:
+	//a static array     (entity holds id), 
+	//an arena allocator (entity holds pointer to texture), 
 	percy_texture := new(rducc.Ducc_Texture)
 	percy_texture^ = rducc.renderer_sprite_load("res/scuffed_percy.png")
 	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
@@ -186,8 +190,7 @@ run :: proc() {
 			fmt.println("Activated button")
 		}
 
-		if widget_token(percy_entity, m_pos, .ABSOLUTE) {
-			percy_entity.pos = {m_pos.x, m_pos.y, 0.0}
+		if widget_token(&percy_entity, m_pos, .ABSOLUTE) {
 		}
 
 		widget_button({500, 500}, {32,32}, m_pos, .ABSOLUTE)
@@ -214,7 +217,7 @@ run :: proc() {
 
 
 		rducc.renderer_circle_draw({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED)
-		rducc.renderer_text_draw(font1, "Hello World!", {600.0, 500.0}, 32)
+		rducc.renderer_text_draw(font1, "Hello World!", {600.0, 500.0}, 16)
 		rducc.renderer_commit()
 
 		//TC: CLEANUP
@@ -271,7 +274,7 @@ widget_button :: proc(button_pos, button_size, mouse_pos: [2]f32, pos_kind: Posi
 RELATIVE = percentage relative to window size
 ABSOLUTTE = x,y as is
 */
-widget_token :: proc(entity:Entity, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
+widget_token :: proc(entity:^Entity, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
 	clicked := false
 	_pos := entity.pos
 	switch pos_kind {
@@ -284,7 +287,7 @@ widget_token :: proc(entity:Entity, mouse_pos: [2]f32, pos_kind: Position_Kind) 
 	mouse_collider = {}
 	mouse_collider.scale = {4.0, 4.0}
 	mouse_collider.kind = .RECT
-	mouse_collider.origin = mouse_pos
+	mouse_collider.origin = rducc.window_mouse_pos()
 
 	button_collider: pducc.Collider = {}
 	button_collider.origin = _pos.xy
@@ -296,6 +299,9 @@ widget_token :: proc(entity:Entity, mouse_pos: [2]f32, pos_kind: Position_Kind) 
 		colour = rducc.GREEN
 		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) {
 			clicked = true
+			m_pos := rducc.window_mouse_pos()
+			diff_pos := m_pos - entity.pos.xy
+			entity.pos += {diff_pos.x, diff_pos.y, 0.0}
 		}
 	}
 
