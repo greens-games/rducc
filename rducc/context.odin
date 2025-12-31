@@ -52,6 +52,7 @@ Context :: struct {
 	levels:               i32,
 	curr_level:           i32,
 	curr_texture_hndl:    u32,
+	default_font:         Ducc_Font,
 
 	//NOTE: This should be removed
 	camera:               Camera,

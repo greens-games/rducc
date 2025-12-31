@@ -2,6 +2,7 @@ package main
 
 import "core:math/rand"
 import "core:time"
+import "core:hash"
 import "rducc"
 import "pducc"
 import "vendor:stb/truetype"
@@ -26,8 +27,14 @@ Entity_Kind :: enum {
 
 Widget_Kind :: enum {
 	BUTTON,
+	TEXT_BOX,
+	CHECK_BOX,
 }
 
+/*
+RELATIVE = percentage relative to window size
+ABSOLUTTE = x,y as is
+*/
 Position_Kind :: enum {
 	RELATIVE,
 	ABSOLUTE,
@@ -54,11 +61,11 @@ Widget :: struct {
 	id:        i32,
 	kind:      Widget_Kind,
 	pos:       [3]f32,
-	curr_cell: [2]u32,
 	rotation:  f32,
 	scale:     [2]f32,
 	collider:  pducc.Collider,
-	on_interaction: proc()
+	active:    bool,
+	hot:       bool,
 }
 
 hot_widget: i32 = -1
@@ -138,8 +145,6 @@ run :: proc() {
 	percy_texture := new(rducc.Ducc_Texture)
 	percy_texture^ = rducc.renderer_sprite_load("res/scuffed_percy.png")
 	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
-	font1 := rducc.renderer_font_load("res/Font3.bmp", 32, 32)
-	font_texture := rducc.renderer_sprite_load("res/Font1.bmp")
 
 	percy_entity: Entity
 	percy_entity.texture = percy_texture
@@ -152,15 +157,19 @@ run :: proc() {
 	percy_entity.collider.radius = 4.0
 
 	colour := rducc.GREEN
-
+	m_pos_change := [2]f32{0.0, 0.0}
+	prev_m_pos := rducc.window_mouse_pos()
 	for !rducc.window_close() {
 		//TC: INIT
+		active_widget = -1
 		m_pos := rducc.window_mouse_pos()
+		m_pos_change = m_pos - prev_m_pos
+
 		dt := rducc.time_delta_get()
 
 		//TC: INPUT
 		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
-			fmt.println("MOUSE CLICKED")
+			fmt.println("M_POS_CHANGE: ", m_pos_change)
 		}
 		if rducc.window_is_key_pressed(.KEY_GRAVE_ACCENT) {
 			debug_draw = !debug_draw
@@ -186,15 +195,11 @@ run :: proc() {
 
 		//TC: RENDER
 		rducc.renderer_background_clear(rducc.GRAY)
-		if widget_button({50, 50}, {32,32}, m_pos, .RELATIVE) {
+		if widget_button("Hello", {50, 50}, {64,32}, m_pos, .RELATIVE) {
 			fmt.println("Activated button")
 		}
 
-		if widget_token(&percy_entity, m_pos, .ABSOLUTE) {
-		}
-
-		widget_button({500, 500}, {32,32}, m_pos, .ABSOLUTE)
-		widget_button({200, 200}, {32,32}, m_pos, .RELATIVE)
+		widget_token(&percy_entity, m_pos, m_pos_change, .ABSOLUTE)
 
 		for row, r in game_ctx.grid {
 			for col, c in row {
@@ -217,12 +222,13 @@ run :: proc() {
 
 
 		rducc.renderer_circle_draw({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED)
-		rducc.renderer_text_draw(font1, "Hello World!", {600.0, 500.0}, 16)
+		rducc.renderer_text_draw(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16)
 		rducc.renderer_commit()
 
 		//TC: CLEANUP
 		//NOTE: This is really bad and should probably not stay, find a better way to free bullets
 		free_all()
+		prev_m_pos = m_pos
 	}
 }
 
@@ -237,13 +243,16 @@ clamp_pos :: proc(pos: [3]f32, velocity: [2]f32) -> [3]f32 {
 RELATIVE = percentage relative to window size
 ABSOLUTTE = x,y as is
 */
-widget_button :: proc(button_pos, button_size, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
+widget_button :: proc(text: string, button_pos, button_size, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
+	h := hash.ginger16(transmute([]byte)text)
 	clicked := false
 	_pos := button_pos
 	switch pos_kind {
 	case .RELATIVE:
-		_pos.x = f32(rducc.ctx.window_width)  * (button_pos.x / 100.0)
-		_pos.y = f32(rducc.ctx.window_height) * (button_pos.y / 100.0)
+		assert(button_pos.x <= 100 && button_pos.y <= 100)
+		assert(button_pos.x >= 0 && button_pos.y >= 0)
+		_pos.x = f32(rducc.ctx.window_width)  * (button_pos.x * 0.01) - button_size.x
+		_pos.y = f32(rducc.ctx.window_height) * (button_pos.y * 0.01) - button_size.y
 	case .ABSOLUTE:
 	}
 	mouse_collider: pducc.Collider 
@@ -259,33 +268,38 @@ widget_button :: proc(button_pos, button_size, mouse_pos: [2]f32, pos_kind: Posi
 	colour := rducc.BLUE
 
 	if pducc.rect_collision(mouse_collider, button_collider) {
+		hot_widget = i32(h)
 		colour = rducc.GREEN
 		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
+			active_widget = i32(h)
 			clicked = true
 		}
 	}
 
+	rducc.renderer_text_draw(rducc.ctx.default_font, text, _pos, 16, rducc.WHITE)
 	rducc.renderer_box_draw({_pos.x, _pos.y, 0.0}, button_size, colour = colour)
 
 	return clicked
 }
 
-/*
-RELATIVE = percentage relative to window size
-ABSOLUTTE = x,y as is
-*/
-widget_token :: proc(entity:^Entity, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
+widget_text_box :: proc(id: int, pos: [3]f32, box_size, mouse_pos: [2]f32) {
+}
+
+widget_token :: proc(entity:^Entity,
+					 mouse_pos: [2]f32,
+					 m_pos_change: [2]f32,
+					 pos_kind: Position_Kind) -> bool {
 	clicked := false
 	_pos := entity.pos
 	switch pos_kind {
 	case .RELATIVE:
-		_pos.x = f32(rducc.ctx.window_width)  * (entity.pos.x / 100.0)
-		_pos.y = f32(rducc.ctx.window_height) * (entity.pos.y / 100.0)
+		_pos.x = f32(rducc.ctx.window_width)  * (entity.pos.x * 0.01) - entity.scale.x
+		_pos.y = f32(rducc.ctx.window_height) * (entity.pos.y * 0.01) - entity.scale.y
 	case .ABSOLUTE:
 	}
 	mouse_collider: pducc.Collider 
 	mouse_collider = {}
-	mouse_collider.scale = {4.0, 4.0}
+	mouse_collider.scale = {8.0, 8.0}
 	mouse_collider.kind = .RECT
 	mouse_collider.origin = rducc.window_mouse_pos()
 
@@ -301,7 +315,7 @@ widget_token :: proc(entity:^Entity, mouse_pos: [2]f32, pos_kind: Position_Kind)
 			clicked = true
 			m_pos := rducc.window_mouse_pos()
 			diff_pos := m_pos - entity.pos.xy
-			entity.pos += {diff_pos.x, diff_pos.y, 0.0}
+			entity.pos += {m_pos_change.x, m_pos_change.y, 0.0}
 		}
 	}
 

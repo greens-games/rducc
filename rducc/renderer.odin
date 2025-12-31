@@ -6,8 +6,8 @@ import "core:c"
 import "core:container/lru"
 import "core:image"
 import "core:math"
+import "core:mem"
 import stbi "vendor:stb/image"
-import tt "vendor:stb/truetype"
 /*
 CONSIDER THIS THE renderer LAYER
 	- Should be abstracted away from the platform layer (i.e try to avoid using glfw.gl_set_proc_address)
@@ -20,7 +20,6 @@ import glm "core:math/linalg/glsl"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
 Colour :: distinct [4]int
-KB :: 1024
 //NOTE: These are ripped straight from Raylib could probably do something else if we wanted
 LIGHTGRAY :: Colour{200, 200, 200, 255} // Light Gray
 GRAY :: Colour{130, 130, 130, 255} // Gray
@@ -128,13 +127,13 @@ renderer_init :: proc() {
 	gl.GenVertexArrays(1, &VAO)
 	gl.GenBuffers(4, raw_data(&VBO_MULTI))
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[0])
-	gl.BufferData(gl.ARRAY_BUFFER, KB * 64, nil, gl.DYNAMIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, mem.Kilobyte * 64, nil, gl.DYNAMIC_DRAW)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[1])
-	gl.BufferData(gl.ARRAY_BUFFER, KB * 64, nil, gl.DYNAMIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, mem.Kilobyte * 64, nil, gl.DYNAMIC_DRAW)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO_MULTI[2])
-	gl.BufferData(gl.ARRAY_BUFFER, KB * 64, nil, gl.DYNAMIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, mem.Kilobyte * 64, nil, gl.DYNAMIC_DRAW)
 
 	gl.BindVertexArray(VAO)
 	gl.EnableVertexAttribArray(0)
@@ -155,6 +154,7 @@ renderer_init :: proc() {
 	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 	shader_load("res/vert_grid.glsl", "res/grid.glsl")
+	ctx.default_font = renderer_font_load("res/Font3.bmp", 32, 32)
 
 	renderer_projection_set()
 }
@@ -236,6 +236,7 @@ renderer_background_clear :: proc(color: Colour) {
 	b := f32(color.b) / 255.
 	a := f32(color.a) / 255.
 	gl.ClearColor(r, g, b, a)
+	/* gl.ClearTexImage */
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
@@ -440,13 +441,13 @@ renderer_sprite_atlas_draw :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale
 	x_offset_plus_one := f32(idx.x + 1) * offset
 	vertices := [?]Vertex {
 		//1
-		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {x_offset_plus_one, y_offset}},
+		{pos_coords = {1.0, 1.0,  0.0}, texture_coords = {x_offset_plus_one, y_offset}},
 		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {x_offset_plus_one, y_offset_minus_one}},
 		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {x_offset, y_offset}},
 		//2
-		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {x_offset_plus_one, y_offset_minus_one}},
+		{pos_coords = {1.0, -1.0,  0.0}, texture_coords = {x_offset_plus_one, y_offset_minus_one}},
 		{pos_coords = {-1.0, -1.0, 0.0}, texture_coords = {x_offset, y_offset_minus_one}},
-		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {x_offset, y_offset}},
+		{pos_coords = {-1.0, 1.0,  0.0}, texture_coords = {x_offset, y_offset}},
 	}
 
 	for &vert in vertices {

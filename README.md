@@ -6,23 +6,16 @@
 ## Today's tasks
 
 ## Current tasks
+- Render draw order or fix z-indexing
+- Use proper ttf fonts or atleast get a transparent font!!!
+- Widgets
+    - Sort out active and hot widgets
+    - Text box widget
+- Fill background with texture
+- Use arena allocator for default allocator
 - Renderer
     - Draw grid
     - Camera
-    - Batch rendering
-    - Multiple textures
-        - Texture Atlas
-        - Multiple texture units with current texture logic
-        - Texture2D Arrays
-        - Bindless Textures
-- Physics
-    - Circle collisions
-        - Circle - Circle
-        - Circle - Rect
-- Game
-    - CHange collision detection to just check for things on:
-        - Your cell OR
-        - Cell you are moving to
 
 ## Renderer TODOs
 - If gpu buffer is going to be full, commit a draw now then start filling again
