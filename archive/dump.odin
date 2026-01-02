@@ -1,0 +1,62 @@
+package rducc
+
+//NOTE: For polygons we need to define the vertices we are doing and adjust scaling based on that I think
+renderer_polygon :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+	vertices := [?]f32{0.0, 1.0, 0.0, -0.5, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, -1.0, 0.0}
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
+	renderer_colour_apply(colour)
+	/* renderer_mvp_apply(vert_info, frag_info) */
+	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	gl.DrawArrays(gl.TRIANGLES, 0, 6)
+	gl.DrawArrays(gl.LINES, 3, 2)
+}
+
+renderer_polygon_sides :: proc(
+	pos: [3]f32,
+	scale: [2]f32,
+	sides: i32,
+	rotation: f32 = 0.0,
+	colour := PINK,
+) {
+	assert(sides < 20)
+	vertices: [20]Vertex
+	segments := sides
+	two_pi := 2.0 * math.PI
+
+	vertices[0] = {
+		pos_coords = {pos.x, pos.y, 0.0},
+	}
+
+	for i in 0 ..= segments {
+		circ_pos := f32(f64(i) * two_pi / f64(segments))
+		vertices[i].pos_coords.x = pos.x + (scale.x * math.cos_f32(circ_pos))
+		vertices[i].pos_coords.y = pos.y + (scale.y * math.sin_f32(circ_pos))
+		vertices[i].pos_coords.z = 0.0
+	}
+
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
+	/* gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices_temp), &vertices_temp, gl.DYNAMIC_DRAW) */
+	renderer_colour_apply(colour)
+	/* gl.DrawElements(gl.LINES, 8, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
+	gl.DrawArrays(gl.TRIANGLE_FAN, 0, i32(segments + 1))
+	/* gl.DrawArrays(gl.TRIANGLE_FAN, 0, 5) */
+}
+
+renderer_circle_outline_draw :: proc(
+	pos: [3]f32,
+	radius: [2]f32,
+	rotation: f32 = 0.0,
+	colour := PINK,
+) {
+	program_load(Shader_Progams.CIRCLE_OUTLINE)
+	gl.BufferData(
+		gl.ARRAY_BUFFER,
+		size_of(vertices_index_box),
+		&vertices_index_box,
+		gl.DYNAMIC_DRAW,
+	)
+	renderer_colour_apply(colour)
+
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
+	program_load(Shader_Progams.PRIMITIVE)
+}

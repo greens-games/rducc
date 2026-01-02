@@ -127,7 +127,8 @@ pos_to_cell :: proc(pos: [3]f32) -> [2]u32 {
 run :: proc() {
 	game_ctx := game_context_init()
 	rducc.window_open(980,620,"RDUCC DEMO")
-	rducc.renderer_init()
+	r_group1: rducc.Render_Group
+	rducc.renderer_init(&r_group1)
 	curr_rotation: f32 = 0.
 
 	mouse_entity: Entity
@@ -137,6 +138,8 @@ run :: proc() {
 	mouse_entity.collider.scale = {4.0, 4.0}
 	mouse_entity.collider.kind = .RECT
 	mouse_entity.collider.radius = 4.0
+
+
 
 	//TODO: Decide how we want to handle storing textures
 	//Can be:

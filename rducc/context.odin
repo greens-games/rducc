@@ -35,6 +35,7 @@ Context :: struct {
 	circle_vertices:      i32,
 	texture_vertices:     i32,
 	outline_vertices:     i32,
+	active_render_group:  ^Render_Group,
 	loaded_buffer:        Shader_Progams,
 
 	//NOTE: Misc 

@@ -7,6 +7,8 @@
 
 ## Current tasks
 - Render draw order or fix z-indexing
+    - We could maybe switch to render groups/layers
+        - When we switch to a new layer or group we commit first
 - Use proper ttf fonts or atleast get a transparent font!!!
 - Widgets
     - Sort out active and hot widgets
