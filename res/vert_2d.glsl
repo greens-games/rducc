@@ -5,8 +5,8 @@ layout (location = 1) in vec2 aTexCoord;
 layout (location = 2) in vec3 localPos;
 layout (location = 3) in vec2 localScale;
 layout (location = 4) in float rotation;
-layout (location = 5) in vec4 i_colour;
-layout (location = 6) in vec4 b_colour;
+layout (location = 5) in vec4 i_colour; //inner colour
+layout (location = 6) in vec4 b_colour; // border colour
 
 out vec2 TexCoord;
 out vec3 pos;
@@ -28,6 +28,7 @@ void main()
 	s[1][1] = adjusted_scale[1];
 	s[2][2] = adjusted_scale[2];
 	s[3][3] = 1;
+	//TODO: Rotation stuff
 	ident = ident * s;
 	gl_Position = projection * ident * vec4(aPos, 1.0);
 	TexCoord = aTexCoord;

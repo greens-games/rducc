@@ -80,7 +80,7 @@ resize_callback :: proc "c" (window: glfw.WindowHandle, width: c.int, height: c.
 	ctx.window_height = height
 	ctx.window_width = width
 	gl.Viewport(0, 0, width, height)
-	renderer_projection_set()
+	projection_set()
 }
 
 window_close :: proc() -> bool {

@@ -2,13 +2,33 @@
 - Inital intention is to learn graphics programming by building a basic immediate mode graphics renderer library
 - Extend to be a GUI library intended to be used for other desktop applications
 
+## Notes
+- Don't shy away from dynamic arrays as much
+    - We can use these maybe avoid doing allocations to them every frame at runtime
+    - perfectly fine for a setup of a dynamic length array
+    - can still use arena allocator for it
+- The way we are doing batch rendering may be entirely wrong/slow
+    - It's quite possible it's just better to do 1 large buffer
+    - Get all the data on the cpu with each call
+    - pass it all to the buffer at the end
+    - This would require using 1 shader by default
+    - We can allow for more shaders from the user but this would do another draw call
+    - You essentially attach all the render information to some ShaderProgram information
 
-## Today's tasks
+
+## Render Groups
+- We can go with 1 of the following
+    1.
+        - Store a pointer to the active render group on CTX
+        - Explicitly say render_group_start > call all draws > render_group_end
+    2.
+        - Have all render calls take a pointer to a group
+        - have all groups be a linked list/stack
+        - When we commit go through stack and commit each render group
+
+
 
 ## Current tasks
-- Render draw order or fix z-indexing
-    - We could maybe switch to render groups/layers
-        - When we switch to a new layer or group we commit first
 - Use proper ttf fonts or atleast get a transparent font!!!
 - Widgets
     - Sort out active and hot widgets
@@ -18,30 +38,6 @@
 - Renderer
     - Draw grid
     - Camera
-
-## Renderer TODOs
-- If gpu buffer is going to be full, commit a draw now then start filling again
-- Do we want to start drawing from middle?
-    - we currently draw from bot left (For this we would change the mvp stuff I believe)
-- Either bring back order based rendering OR fix z-indexing
-- Draw Polygons
-- Draw text (start with bitmap fonts)
-- Get hot reloading working
-    - Shaders
-    - Textures
-- Other APIs (Implement the same OpenGL stuff in these)
-    - Vulkan
-    - DirectX 11
-    - DirectX 12
-    - CPU rendering (Software rendering)
-
-## Physics
-- Polygon collisions
-- Collision module is just for detecting if 2 objects are colliding
-- We want a module to apply different formulas depending on if 2 objects colliding and some properties about them
-
-## Plans
-- Possibly use the renderer to build a game
 
 ## Other fun stuff
 - First understand the existing odin context allocators and what they are doing

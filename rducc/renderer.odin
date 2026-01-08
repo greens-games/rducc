@@ -8,6 +8,7 @@ import "core:image"
 import "core:math"
 import "core:mem"
 import stbi "vendor:stb/image"
+import tt "vendor:stb/truetype"
 /*
 CONSIDER THIS THE renderer LAYER
 	- Should be abstracted away from the platform layer (i.e try to avoid using glfw.gl_set_proc_address)
@@ -58,6 +59,12 @@ vertices_index_box := [?]Vertex {
 	{pos_coords = {-1.0,  1.0, 1.0}},
 }
 
+Render_Buffer :: enum u8 {
+	RECT,
+	CIRCLE,
+	TEXTURE,
+}
+
 
 Vert_Info :: struct {
 	pos:      [2]f32,
@@ -66,11 +73,8 @@ Vert_Info :: struct {
 	radius:   f32,
 }
 
-Frag_Info :: struct {
-	colour: Colour,
-}
-
 //NOTE: This is getting large maybe we can make it smaller somehow
+//It's possible it's better still to do the maths on the cpu side and pass less as attributes?
 Vertex :: struct {
 	pos_coords:     [3]f32,
 	texture_coords: [2]f32,
@@ -81,20 +85,7 @@ Vertex :: struct {
 	border_colour:  [4]f32,
 }
 
-/* Vertex :: struct {
-	pos_coords:     [3]f32,
-	texture_coords: [3]f32,
-	pos:            [3]f32,
-	scale:          [2]f32,
-	rotation:       f32,
-	colour:         [4]f32,
-} */
-
-EBO, VAO, VBO: u32
-VBO_MULTI:     [4]u32
-TEXTURE_HNDL:  u32
-
-renderer_init :: proc(render_group: ^Render_Group) {
+init :: proc() {
 	gl.load_up_to(4, 6, glfw.gl_set_proc_address) //required for proc address stuff
 	gl.Viewport(0, 0, ctx.window_width, ctx.window_height)
 	/* gl.Viewport(0, ctx.window_height, ctx.window_width, 0) */
@@ -124,11 +115,9 @@ renderer_init :: proc(render_group: ^Render_Group) {
 	ctx.indices[5] = 3
 
 	//TODO: Generate and store a buffer for each batch type?
-	gl.GenVertexArrays(1, &VAO)
-	render_group_init(render_group)
-	ctx.active_render_group = render_group
+	gl.GenVertexArrays(1, &ctx.active_vao)
 
-	gl.BindVertexArray(VAO)
+	gl.BindVertexArray(ctx.active_vao)
 	gl.EnableVertexAttribArray(0)
 	gl.EnableVertexAttribArray(1)
 	gl.EnableVertexAttribArray(2)
@@ -147,12 +136,12 @@ renderer_init :: proc(render_group: ^Render_Group) {
 	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 	shader_load("res/vert_grid.glsl", "res/grid.glsl")
-	ctx.default_font = renderer_font_load("res/Font3.bmp", 32, 32)
+	ctx.default_font = font_load("res/Font3.bmp", 32, 32)
 
-	renderer_projection_set()
+	projection_set()
 }
 
-renderer_projection_set :: proc() {
+projection_set :: proc() {
 	//Bottom left orientation
 	projection := glm.mat4Ortho3d(
 		0.0,
@@ -223,7 +212,7 @@ debug_proc_t :: proc "c" (
 
 
 //NOTE: This is exactly how raylib does their ClearBackground logic
-renderer_background_clear :: proc(color: Colour) {
+background_clear :: proc(color: Colour) {
 	r := f32(color.r) / 255.
 	g := f32(color.g) / 255.
 	b := f32(color.b) / 255.
@@ -233,7 +222,7 @@ renderer_background_clear :: proc(color: Colour) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
-renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
+pixel :: proc(pos: [3]f32, colour: Colour) {
 	vertices := [?]f32{-1.0, -1.0, 0.0}
 	indices := [?]f32{0}
 	/* gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(u32), &indices, gl.DYNAMIC_DRAW) */
@@ -242,8 +231,8 @@ renderer_pixel :: proc(pos: [3]f32, colour: Colour) {
 	/* gl.DrawElements(gl.TRIANGLES, 1, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 }
 
-renderer_box_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[i32(Shader_Progams.PRIMITIVE)])
+draw_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.RECT])
 
 	v := vertices_index_box
 	r := f32(colour.r) / 255.
@@ -255,7 +244,7 @@ renderer_box_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colou
 		vert.pos = pos
 		vert.scale = scale
 		vert.rotation = rotation
-		vert.colour = renderer_colour_apply(colour)
+		vert.colour = colour_apply(colour)
 		vert.border_colour = [4]f32{0,0,0,0}
 	}
 
@@ -269,8 +258,8 @@ renderer_box_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colou
 	ctx.active_render_group.box_vertices += len(vertices_index_box)
 }
 
-renderer_box_lines_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[i32(Shader_Progams.PRIMITIVE)])
+draw_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.RECT])
 
 	v := vertices_index_box
 	r := f32(colour.r) / 255.
@@ -282,7 +271,7 @@ renderer_box_lines_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0,
 		vert.pos = pos
 		vert.scale = scale
 		vert.rotation = rotation
-		vert.border_colour = renderer_colour_apply(colour)
+		vert.border_colour = colour_apply(colour)
 		vert.colour = [4]f32{0,0,0,0}
 	}
 
@@ -296,8 +285,8 @@ renderer_box_lines_draw :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0,
 	ctx.active_render_group.box_vertices += len(vertices_index_box)
 }
 
-renderer_circle_draw :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[i32(Shader_Progams.CIRCLE)])
+draw_circle :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.CIRCLE])
 
 	v := vertices_index_box
 	r := f32(colour.r) / 255.
@@ -309,7 +298,7 @@ renderer_circle_draw :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, c
 		vert.pos      = pos
 		vert.scale    = radius
 		vert.rotation = rotation
-		vert.colour   = renderer_colour_apply(colour)
+		vert.colour   = colour_apply(colour)
 	}
 
 	gl.BufferSubData(
@@ -322,7 +311,7 @@ renderer_circle_draw :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, c
 	ctx.active_render_group.circle_vertices += len(vertices_index_box)
 }
 
-renderer_sprite_atlas_load :: proc(f_name: cstring, sprite_size: i32) -> Ducc_Texture_Atlas {
+sprite_atlas_load :: proc(f_name: cstring, sprite_size: i32) -> Ducc_Texture_Atlas {
 	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
 	height, width, channels_in_file: i32
 	stbi.set_flip_vertically_on_load(1)
@@ -349,13 +338,13 @@ renderer_sprite_atlas_load :: proc(f_name: cstring, sprite_size: i32) -> Ducc_Te
 
 //Takes in position data, texture data to be drawn, and index into the atlas from top down
 //i.e 0,0 will be top left. atlas.rows - 1, atlas.cols - 1 will be bottom right
-renderer_sprite_atlas_draw :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32, idx: [2]i32, rotation: f32 = 0.0, colour := WHITE) {
+draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32, idx: [2]i32, rotation: f32 = 0.0, colour := WHITE) {
 	if (ctx.active_render_group.curr_texture_hndl == 0) {
 		gl.BindTexture(gl.TEXTURE_2D, atlas.hndl)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, atlas.height, atlas.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, atlas.data)
 		ctx.active_render_group.curr_texture_hndl = atlas.hndl
 	} else if (atlas.hndl != ctx.active_render_group.curr_texture_hndl) {
-		renderer_texture_batch_commit(ctx.active_render_group.curr_texture_hndl)
+		render_group_texture_batch_commit(ctx.active_render_group)
 		gl.BindTexture(gl.TEXTURE_2D, atlas.hndl)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, atlas.height, atlas.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, atlas.data)
 		ctx.active_render_group.curr_texture_hndl = atlas.hndl
@@ -386,10 +375,10 @@ renderer_sprite_atlas_draw :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale
 		vert.pos      = pos
 		vert.scale    = scale
 		vert.rotation = rotation
-		vert.colour   = renderer_colour_apply(colour)
+		vert.colour   = colour_apply(colour)
 	}
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[2])
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		int(ctx.active_render_group.texture_vertices) * size_of(Vertex),
@@ -401,7 +390,7 @@ renderer_sprite_atlas_draw :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale
 
 //Read in some file name
 //Return back data about the texture
-renderer_sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
+sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
 	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
 	height, width, channels_in_file: i32
 	stbi.set_flip_vertically_on_load(1)
@@ -421,13 +410,13 @@ renderer_sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
 }
 
 //Takes in position data, and texture data to be drawn
-renderer_sprite_draw :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
+draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
 	if (ctx.active_render_group.curr_texture_hndl == 0) {
 		gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
 		ctx.active_render_group.curr_texture_hndl = texture.hndl
 	} else if (texture.hndl != ctx.active_render_group.curr_texture_hndl) {
-		renderer_texture_batch_commit(ctx.active_render_group.curr_texture_hndl)
+		render_group_texture_batch_commit(ctx.active_render_group)
 		gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
 		ctx.active_render_group.curr_texture_hndl = texture.hndl
@@ -447,10 +436,10 @@ renderer_sprite_draw :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, 
 		vert.pos      = pos
 		vert.scale    = scale
 		vert.rotation = rotation
-		vert.colour   = renderer_colour_apply(colour)
+		vert.colour   = colour_apply(colour)
 	}
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[2])
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		int(ctx.active_render_group.texture_vertices) * size_of(Vertex),
@@ -460,12 +449,12 @@ renderer_sprite_draw :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, 
 	ctx.active_render_group.texture_vertices += len(vertices)
 }
 
-renderer_font_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
-	return renderer_font_bmp_load(font_path, offset, sprite_size)
+font_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
+	return font_bmp_load(font_path, offset, sprite_size)
 }
 
-renderer_font_bmp_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
-	texture := renderer_sprite_atlas_load(font_path, sprite_size)
+font_bmp_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
+	texture := sprite_atlas_load(font_path, sprite_size)
 	
 	font: Ducc_Font
 	font.hndl = texture.hndl
@@ -484,7 +473,7 @@ renderer_font_bmp_load :: proc(font_path: cstring, offset: i32, sprite_size: i32
 take in a loaded font, line of text, position, font_size, and colour
 currently maps the font to a texture atlas and calls the renderer's texture atlas draw proc
 */
-renderer_text_draw :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size: f32, colour: Colour = WHITE) {
+draw_text :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size: f32, colour: Colour = WHITE) {
 	texture: Ducc_Texture_Atlas = {
 		hndl = font.hndl,
 		data = font.data,
@@ -500,11 +489,11 @@ renderer_text_draw :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size
 		idx_y    := offset_c / 8 //find the row in our atlas from top to bottom
 		adj_cols := ((font.cols) * i32(idx_y)) //find the starting point for the row in our imaginary flat array
 		normalized_offset := (i32(offset_c) - adj_cols) //normalize our char index to be 0 to (cols- 1) so we can index into the row
-		renderer_sprite_atlas_draw(texture, {pos.x + f32((i32(i) * i32(font_size))), pos.y, 0.0}, {font_size, font_size}, {i32(normalized_offset), i32(idx_y)}, colour = colour)
+		draw_sprite_atlas(texture, {pos.x + f32((i32(i) * i32(font_size))), pos.y, 0.0}, {font_size, font_size}, {i32(normalized_offset), i32(idx_y)}, colour = colour)
 	}
 }
 
-renderer_colour_apply :: proc(colour: Colour) -> [4]f32 {
+colour_apply :: proc(colour: Colour) -> [4]f32 {
 	r := f32(colour.r) / 255.
 	g := f32(colour.g) / 255.
 	b := f32(colour.b) / 255.
@@ -513,35 +502,11 @@ renderer_colour_apply :: proc(colour: Colour) -> [4]f32 {
 	return {r, g, b, a}
 }
 
-renderer_commit :: proc() {
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[0])
-	renderer_vertex_attrib_apply()
-	program_load(.PRIMITIVE)
-	gl.DrawArrays(gl.TRIANGLES, 0, ctx.active_render_group.box_vertices)
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[1])
-	renderer_vertex_attrib_apply()
-	program_load(.CIRCLE)
-	gl.DrawArrays(gl.TRIANGLES, 0, ctx.active_render_group.circle_vertices)
-
-	renderer_texture_batch_commit(ctx.active_render_group.curr_texture_hndl)
-
-	ctx.active_render_group.box_vertices = 0
-	ctx.active_render_group.circle_vertices = 0
-	ctx.active_render_group.curr_texture_hndl = 0
+commit :: proc() {
+	render_group_commit(ctx.active_render_group)
 }
 
-renderer_texture_batch_commit :: proc(handl: u32) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[2])
-	renderer_vertex_attrib_apply()
-	program_load(.TEXTURE)
-	gl.GenerateMipmap(gl.TEXTURE_2D)
-	gl.DrawArrays(gl.TRIANGLES, 0, ctx.active_render_group.texture_vertices)
-	ctx.active_render_group.texture_vertices = 0
-}
-
-renderer_vertex_attrib_apply :: proc() {
+vertex_attrib_apply :: proc() {
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), (0 * size_of(f32)))
 	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
 	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))

@@ -127,8 +127,8 @@ pos_to_cell :: proc(pos: [3]f32) -> [2]u32 {
 run :: proc() {
 	game_ctx := game_context_init()
 	rducc.window_open(980,620,"RDUCC DEMO")
-	r_group1: rducc.Render_Group
-	rducc.renderer_init(&r_group1)
+	rducc.init()
+	r_group1 := rducc.render_group_create()
 	curr_rotation: f32 = 0.
 
 	mouse_entity: Entity
@@ -146,8 +146,8 @@ run :: proc() {
 	//a static array     (entity holds id), 
 	//an arena allocator (entity holds pointer to texture), 
 	percy_texture := new(rducc.Ducc_Texture)
-	percy_texture^ = rducc.renderer_sprite_load("res/scuffed_percy.png")
-	player_filled_texture := rducc.renderer_sprite_load("res/player_filled_transparent.png")
+	percy_texture^ = rducc.sprite_load("res/scuffed_percy.png")
+	player_filled_texture := rducc.sprite_load("res/player_filled_transparent.png")
 
 	percy_entity: Entity
 	percy_entity.texture = percy_texture
@@ -162,6 +162,8 @@ run :: proc() {
 	colour := rducc.GREEN
 	m_pos_change := [2]f32{0.0, 0.0}
 	prev_m_pos := rducc.window_mouse_pos()
+
+	r_group2 := rducc.render_group_create()
 	for !rducc.window_close() {
 		//TC: INIT
 		active_widget = -1
@@ -196,20 +198,21 @@ run :: proc() {
 			entity.curr_cell = {col, row}
 		}
 
+		rducc.render_group_start(&r_group2)
 		//TC: RENDER
-		rducc.renderer_background_clear(rducc.GRAY)
+		rducc.background_clear(rducc.GRAY)
 		if widget_button("Hello", {50, 50}, {64,32}, m_pos, .RELATIVE) {
 			fmt.println("Activated button")
 		}
+		rducc.render_group_finish()
 
-		widget_token(&percy_entity, m_pos, m_pos_change, .ABSOLUTE)
 
 		for row, r in game_ctx.grid {
 			for col, c in row {
 				if col.occupiers[0] != -1 {
 					colour: rducc.Colour
 					colour = {255,255,255,125}
-					rducc.renderer_box_draw({f32(c) * SPRITE_SCALE.x, f32(r) * SPRITE_SCALE.y, 0.0}, SPRITE_SCALE, colour = colour)
+					rducc.draw_box({f32(c) * SPRITE_SCALE.x, f32(r) * SPRITE_SCALE.y, 0.0}, SPRITE_SCALE, colour = colour)
 				}
 			}
 		}
@@ -218,15 +221,18 @@ run :: proc() {
 			e := game_ctx.entities[idx]
 			switch e.kind {
 			case .TOKEN:
-				/* rducc.renderer_sprite_draw(e.pos, e.scale, e.rotation, rducc.WHITE) */
-				rducc.renderer_box_draw({e.pos.x, e.pos.y, 10.0}, e.scale, e.rotation, rducc.BLACK)
+				/* rducc.draw_sprite(e.pos, e.scale, e.rotation, rducc.WHITE) */
+				rducc.draw_box({e.pos.x, e.pos.y, 10.0}, e.scale, e.rotation, rducc.BLACK)
 			}
 		}
 
 
-		rducc.renderer_circle_draw({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED)
-		rducc.renderer_text_draw(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16)
-		rducc.renderer_commit()
+		rducc.render_group_start(&r_group1)
+		rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED)
+		rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16)
+		widget_token(&percy_entity, m_pos, m_pos_change, .ABSOLUTE)
+		rducc.render_group_finish()
+		/* rducc.commit() */
 
 		//TC: CLEANUP
 		//NOTE: This is really bad and should probably not stay, find a better way to free bullets
@@ -279,8 +285,8 @@ widget_button :: proc(text: string, button_pos, button_size, mouse_pos: [2]f32, 
 		}
 	}
 
-	rducc.renderer_text_draw(rducc.ctx.default_font, text, _pos, 16, rducc.WHITE)
-	rducc.renderer_box_draw({_pos.x, _pos.y, 0.0}, button_size, colour = colour)
+	rducc.draw_text(rducc.ctx.default_font, text, _pos, 16, rducc.WHITE)
+	rducc.draw_box({_pos.x, _pos.y, 0.0}, button_size, colour = colour)
 
 	return clicked
 }
@@ -322,7 +328,7 @@ widget_token :: proc(entity:^Entity,
 		}
 	}
 
-	rducc.renderer_sprite_draw(entity.texture^, entity.pos, entity.scale)
+	rducc.draw_sprite(entity.texture^, entity.pos, entity.scale)
 
 	return clicked
 }
@@ -337,5 +343,6 @@ debug_profile :: proc(a: rawptr, msg: string) {
 }
 
 test :: proc() {
+	result, ok := os.read_entire_file_from_filename("res/minecraft-font/MinecraftRegular-Bmg3.otf")
 	fmt.printfln("%d", size_of(rducc.Vertex))
 }

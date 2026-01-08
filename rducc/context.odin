@@ -17,26 +17,22 @@ Shader_Progam :: struct {
 }
 
 Context :: struct {
+	//NOTE: Window
 	window_hndl:          glfw.WindowHandle,
 	window_width:         i32, 
 	window_height:        i32,
 
 	//NOTE: Default shaders to renderer uses internally
-	program_cache:        [10]u32,
-	shader_cache:         [10]Shader_Progam,
+	program_cache:        [10]u32, //Could be dynamic
+	shader_cache:         [10]Shader_Progam, //Could be dynamic
 	shader_cache_count:   u32,
 	loaded_program:       u32,
 	loaded_uniforms:      gl.Uniforms,
-	buffer_offset:        int,
+	//TODO: default shape texture (big texture that is all white)
 
 	//NOTE: Batching stuff
-	num_vertices:         i32,
-	box_vertices:         i32,
-	circle_vertices:      i32,
-	texture_vertices:     i32,
-	outline_vertices:     i32,
 	active_render_group:  ^Render_Group,
-	loaded_buffer:        Shader_Progams,
+	active_vao:           u32,
 
 	//NOTE: Misc 
 	time:                 f64,
@@ -50,8 +46,6 @@ Context :: struct {
 	mouse_clicked:        bool,
 
 	//Textures
-	levels:               i32,
-	curr_level:           i32,
 	curr_texture_hndl:    u32,
 	default_font:         Ducc_Font,
 
