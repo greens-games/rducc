@@ -29,6 +29,7 @@ Context :: struct {
 	loaded_program:       u32,
 	loaded_uniforms:      gl.Uniforms,
 	//TODO: default shape texture (big texture that is all white)
+	shape_texture_empty:  Ducc_Texture,
 
 	//NOTE: Batching stuff
 	active_render_group:  ^Render_Group,

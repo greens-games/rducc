@@ -2,13 +2,10 @@ package rducc
 
 import "core:strings"
 import "base:runtime"
+import "core:slice"
+
 import "core:c"
-import "core:container/lru"
-import "core:image"
-import "core:math"
-import "core:mem"
 import stbi "vendor:stb/image"
-import tt "vendor:stb/truetype"
 /*
 CONSIDER THIS THE renderer LAYER
 	- Should be abstracted away from the platform layer (i.e try to avoid using glfw.gl_set_proc_address)
@@ -48,8 +45,6 @@ BLACK :: Colour{0, 0, 0, 255} // Black
 BLANK :: Colour{0, 0, 0, 0} // Blank (Transparent)
 MAGENTA :: Colour{255, 0, 255, 255} // Magenta
 
-//TODO: We may want to create a struct for our vertices so we can more easily send more data to the GPU
-//I believe this mainly affects sending attributes to shaders, may also minorly affect the DrawCalls and BufferData but I don't 100% remember
 vertices_index_box := [?]Vertex {
 	{pos_coords = {1.0,   1.0, 1.0}},
 	{pos_coords = {1.0,  -1.0, 1.0}},
@@ -88,12 +83,9 @@ Vertex :: struct {
 init :: proc() {
 	gl.load_up_to(4, 6, glfw.gl_set_proc_address) //required for proc address stuff
 	gl.Viewport(0, 0, ctx.window_width, ctx.window_height)
-	/* gl.Viewport(0, ctx.window_height, ctx.window_width, 0) */
 	gl.Enable(gl.DEBUG_OUTPUT)
 	gl.Enable(gl.DEBUG_OUTPUT_SYNCHRONOUS)
 	gl.DebugMessageCallback(debug_proc_t, {})
-	/* gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE) */
-	//Can add filters here
 	gl.DebugMessageControl(
 		gl.DEBUG_SOURCE_API,
 		gl.DEBUG_TYPE_ERROR,
@@ -102,7 +94,6 @@ init :: proc() {
 		nil,
 		gl.TRUE,
 	)
-	/* gl.DebugMessageControl(gl.DEBUG_SOURCE_API, gl.DEBUG_TYPE_ERROR, gl.DEBUG_SEVERITY_MEDIUM, 0, nil, gl.TRUE) */
 
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -114,7 +105,6 @@ init :: proc() {
 	ctx.indices[4] = 2
 	ctx.indices[5] = 3
 
-	//TODO: Generate and store a buffer for each batch type?
 	gl.GenVertexArrays(1, &ctx.active_vao)
 
 	gl.BindVertexArray(ctx.active_vao)
@@ -126,11 +116,6 @@ init :: proc() {
 	gl.EnableVertexAttribArray(5)
 	gl.EnableVertexAttribArray(6)
 
-	gl.TexParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-	/* gl.ActiveTexture(gl.TEXTURE0) */
-
 	shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
@@ -138,6 +123,9 @@ init :: proc() {
 	shader_load("res/vert_grid.glsl", "res/grid.glsl")
 	ctx.default_font = font_load("res/Font3.bmp", 32, 32)
 
+	white_rect: [16*16*4]u8
+	slice.fill(white_rect[:], 255)
+	ctx.shape_texture_empty = sprite_load(white_rect[:], 16, 16)
 	projection_set()
 }
 
@@ -179,34 +167,12 @@ debug_proc_t :: proc "c" (
 	userParam: rawptr,
 ) {
 	context = runtime.default_context()
-	/* switch source {
-        case gl.DEBUG_SOURCE_API:             fmt.println("Source: API")
-        case gl.DEBUG_SOURCE_WINDOW_SYSTEM:   fmt.println("Source: Window System")
-        case gl.DEBUG_SOURCE_SHADER_COMPILER: fmt.println("Source: Shader Compiler")
-        case gl.DEBUG_SOURCE_THIRD_PARTY:     fmt.println("Source: Third Party")
-        case gl.DEBUG_SOURCE_APPLICATION:     fmt.println("Source: Application")
-        case gl.DEBUG_SOURCE_OTHER:           fmt.println("Source: Other")
-    } */
 
 	switch (type) {
 	case gl.DEBUG_TYPE_ERROR:
 		fmt.println("Type: Error")
 		fmt.println("MESSAGE: ", message)
-	/* case gl.DEBUG_TYPE_DEPRECATED_BEHAVIOR: fmt.println("Type: Deprecated Behaviour")
-        case gl.DEBUG_TYPE_UNDEFINED_BEHAVIOR:  fmt.println("Type: Undefined Behaviour")
-        case gl.DEBUG_TYPE_PORTABILITY:         fmt.println("Type: Portability")
-        case gl.DEBUG_TYPE_PERFORMANCE:         fmt.println("Type: Performance")
-        case gl.DEBUG_TYPE_MARKER:              fmt.println("Type: Marker")
-        case gl.DEBUG_TYPE_PUSH_GROUP:          fmt.println("Type: Push Group")
-        case gl.DEBUG_TYPE_POP_GROUP:           fmt.println("Type: Pop Group")
-        case gl.DEBUG_TYPE_OTHER:               fmt.println("Type: Other") */
 	}
-	/* switch (severity) {
-        case gl.DEBUG_SEVERITY_HIGH:         fmt.println("Severity: high")
-        case gl.DEBUG_SEVERITY_MEDIUM:       fmt.println("Severity: medium")
-        case gl.DEBUG_SEVERITY_LOW:          fmt.println("Severity: low")
-        case gl.DEBUG_SEVERITY_NOTIFICATION: fmt.println("Severity: notification")
-    } */
 
 }
 
@@ -218,17 +184,14 @@ background_clear :: proc(color: Colour) {
 	b := f32(color.b) / 255.
 	a := f32(color.a) / 255.
 	gl.ClearColor(r, g, b, a)
-	/* gl.ClearTexImage */
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }
 
 pixel :: proc(pos: [3]f32, colour: Colour) {
 	vertices := [?]f32{-1.0, -1.0, 0.0}
 	indices := [?]f32{0}
-	/* gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(u32), &indices, gl.DYNAMIC_DRAW) */
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.DYNAMIC_DRAW)
 	gl.DrawArrays(gl.POINTS, 0, len(vertices))
-	/* gl.DrawElements(gl.TRIANGLES, 1, gl.UNSIGNED_INT, raw_data(ctx.indices)) */
 }
 
 draw_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
@@ -350,8 +313,6 @@ draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32,
 		ctx.active_render_group.curr_texture_hndl = atlas.hndl
 	}
 
-	//This should use idx and rows/cols instead of width/height and sprite_size
-	//Ex: bottom left is 0 - 0.1250 (x,y)
 	offset := 1.0/f32(atlas.rows)
 
 	//Top down
@@ -390,11 +351,8 @@ draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32,
 
 //Read in some file name
 //Return back data about the texture
-sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
+sprite_load :: proc(data: []u8, height, width: int)  -> Ducc_Texture {
 	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
-	height, width, channels_in_file: i32
-	stbi.set_flip_vertically_on_load(1)
-	data := stbi.load(f_name, &height, &width, &channels_in_file, 4)
 	texture_hndl: u32
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
@@ -402,15 +360,20 @@ sprite_load :: proc(f_name: cstring)  -> Ducc_Texture {
 	gl.GenTextures(1, &texture_hndl)
 
 	texture: Ducc_Texture
-	texture.data   = data
-	texture.height = height
-	texture.width  = width
+	//TODO: We probably want our system to not have to store all our texture data in memory all the time
+	texture.data   = raw_data(data) 
+	texture.height = i32(height)
+	texture.width  = i32(width)
 	texture.hndl   = texture_hndl
 	return texture
 }
 
 //Takes in position data, and texture data to be drawn
 draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
+	//TODO: cleanup this stuff
+	//ALl functions will have to do the texture data
+	//Can probably just be 1 render commit
+	//Also update atlas
 	if (ctx.active_render_group.curr_texture_hndl == 0) {
 		gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
@@ -421,15 +384,16 @@ draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation:
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
 		ctx.active_render_group.curr_texture_hndl = texture.hndl
 	}
+	//we flipped the texture coords here
 	vertices := [?]Vertex {
 		//1
-		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {1.0, 1.0}},
-		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 0.0}},
-		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 1.0}},
+		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {1.0, 0.0}},
+		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 1.0}},
+		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 0.0}},
 		//2
-		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 0.0}},
-		{pos_coords = {-1.0, -1.0, 0.0}, texture_coords = {0.0, 0.0}},
-		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 1.0}},
+		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 1.0}},
+		{pos_coords = {-1.0, -1.0, 0.0}, texture_coords = {0.0, 1.0}},
+		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 0.0}},
 	}
 
 	for &vert in vertices {
@@ -498,7 +462,6 @@ colour_apply :: proc(colour: Colour) -> [4]f32 {
 	g := f32(colour.g) / 255.
 	b := f32(colour.b) / 255.
 	a := f32(colour.a) / 255.
-	//TODO: Colour can probably be an attribute rather than uniform
 	return {r, g, b, a}
 }
 

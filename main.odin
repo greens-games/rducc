@@ -1,18 +1,19 @@
 package main
 
-import "core:math/rand"
+import "core:image"
+import "core:image/png"
+
 import "core:time"
 import "core:hash"
 import "rducc"
 import "pducc"
-import "vendor:stb/truetype"
-import "vendor:stb/easy_font"
 
-import "core:math/linalg"
 import "core:fmt"
 import "core:math"
 import "core:mem"
 import "core:os"
+
+import stbi "vendor:stb/image"
 
 
 W_HEIGHT :: 620
@@ -79,7 +80,6 @@ SPRITE_SCALE :: [2]f32{32.0, 32.0}
 BASE_SCALE :: [2]f32{16.0, 16.0}
 debug_draw := false
 
-//TODO: Add hot reloading
 main :: proc() {
 	when ODIN_DEBUG {
 		track: mem.Tracking_Allocator
@@ -145,12 +145,11 @@ run :: proc() {
 	//Can be:
 	//a static array     (entity holds id), 
 	//an arena allocator (entity holds pointer to texture), 
-	percy_texture := new(rducc.Ducc_Texture)
-	percy_texture^ = rducc.sprite_load("res/scuffed_percy.png")
-	player_filled_texture := rducc.sprite_load("res/player_filled_transparent.png")
+	image, image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
+	percy_texture := rducc.sprite_load(image.pixels.buf[:], image.height, image.width)
 
 	percy_entity: Entity
-	percy_entity.texture = percy_texture
+	percy_entity.texture = &percy_texture
 	percy_entity.scale = SPRITE_SCALE
 	percy_entity.pos = {150.0, 150.0, 1.0}
 	percy_entity.id = 0
@@ -164,6 +163,7 @@ run :: proc() {
 	prev_m_pos := rducc.window_mouse_pos()
 
 	r_group2 := rducc.render_group_create()
+	fmt.println(rducc.ctx.shape_texture_empty)
 	for !rducc.window_close() {
 		//TC: INIT
 		active_widget = -1
