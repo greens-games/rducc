@@ -163,7 +163,6 @@ run :: proc() {
 	prev_m_pos := rducc.window_mouse_pos()
 
 	r_group2 := rducc.render_group_create()
-	fmt.println(rducc.ctx.shape_texture_empty)
 	for !rducc.window_close() {
 		//TC: INIT
 		active_widget = -1
@@ -198,13 +197,13 @@ run :: proc() {
 			entity.curr_cell = {col, row}
 		}
 
-		rducc.render_group_start(&r_group2)
 		//TC: RENDER
 		rducc.background_clear(rducc.GRAY)
+		/* rducc.render_group_start(&r_group2)
 		if widget_button("Hello", {50, 50}, {64,32}, m_pos, .RELATIVE) {
 			fmt.println("Activated button")
 		}
-		rducc.render_group_finish()
+		rducc.render_group_finish() */
 
 
 		for row, r in game_ctx.grid {
@@ -228,10 +227,10 @@ run :: proc() {
 
 
 		rducc.render_group_start(&r_group1)
-		rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED)
-		rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16)
+		/* rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED) */
+		/* rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16) */
 		widget_token(&percy_entity, m_pos, m_pos_change, .ABSOLUTE)
-		rducc.render_group_finish()
+		rducc.commit()
 		/* rducc.commit() */
 
 		//TC: CLEANUP

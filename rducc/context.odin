@@ -34,6 +34,7 @@ Context :: struct {
 	//NOTE: Batching stuff
 	active_render_group:  ^Render_Group,
 	active_vao:           u32,
+	batch_vertices:       i32,
 
 	//NOTE: Misc 
 	time:                 f64,

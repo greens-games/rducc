@@ -1,5 +1,6 @@
 package rducc
 
+import "core:math/linalg"
 import "core:strings"
 import "base:runtime"
 import "core:slice"
@@ -73,9 +74,6 @@ Vert_Info :: struct {
 Vertex :: struct {
 	pos_coords:     [3]f32,
 	texture_coords: [2]f32,
-	pos:            [3]f32,
-	scale:          [2]f32,
-	rotation:       f32,
 	colour:         [4]f32,
 	border_colour:  [4]f32,
 }
@@ -112,9 +110,6 @@ init :: proc() {
 	gl.EnableVertexAttribArray(1)
 	gl.EnableVertexAttribArray(2)
 	gl.EnableVertexAttribArray(3)
-	gl.EnableVertexAttribArray(4)
-	gl.EnableVertexAttribArray(5)
-	gl.EnableVertexAttribArray(6)
 
 	shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
@@ -204,9 +199,9 @@ draw_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK
 	a := f32(colour.a) / 255.
 
 	for &vert in v {
-		vert.pos = pos
+		/* vert.pos = pos
 		vert.scale = scale
-		vert.rotation = rotation
+		vert.rotation = rotation */
 		vert.colour = colour_apply(colour)
 		vert.border_colour = [4]f32{0,0,0,0}
 	}
@@ -231,9 +226,9 @@ draw_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour :
 	a := f32(colour.a) / 255.
 
 	for &vert in v {
-		vert.pos = pos
+		/* vert.pos = pos
 		vert.scale = scale
-		vert.rotation = rotation
+		vert.rotation = rotation */
 		vert.border_colour = colour_apply(colour)
 		vert.colour = [4]f32{0,0,0,0}
 	}
@@ -258,9 +253,9 @@ draw_circle :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := 
 	a := f32(colour.a) / 255.
 
 	for &vert in v {
-		vert.pos      = pos
+		/* vert.pos      = pos
 		vert.scale    = radius
-		vert.rotation = rotation
+		vert.rotation = rotation */
 		vert.colour   = colour_apply(colour)
 	}
 
@@ -333,9 +328,9 @@ draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32,
 	}
 
 	for &vert in vertices {
-		vert.pos      = pos
+		/* vert.pos      = pos
 		vert.scale    = scale
-		vert.rotation = rotation
+		vert.rotation = rotation */
 		vert.colour   = colour_apply(colour)
 	}
 
@@ -384,33 +379,42 @@ draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation:
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
 		ctx.active_render_group.curr_texture_hndl = texture.hndl
 	}
-	//we flipped the texture coords here
-	vertices := [?]Vertex {
-		//1
-		{pos_coords = {1.0, 1.0, 0.0}, texture_coords = {1.0, 0.0}},
-		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 1.0}},
-		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 0.0}},
-		//2
-		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {1.0, 1.0}},
-		{pos_coords = {-1.0, -1.0, 0.0}, texture_coords = {0.0, 1.0}},
-		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {0.0, 0.0}},
-	}
 
-	for &vert in vertices {
-		vert.pos      = pos
-		vert.scale    = scale
-		vert.rotation = rotation
-		vert.colour   = colour_apply(colour)
-	}
+	push_vertex(pos, scale, colour)
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
+	/* gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		int(ctx.active_render_group.texture_vertices) * size_of(Vertex),
 		size_of(vertices),
 		&vertices,
 	)
-	ctx.active_render_group.texture_vertices += len(vertices)
+	ctx.active_render_group.texture_vertices += len(vertices) */
+}
+
+push_vertex :: proc(pos: [3]f32, scale: [2]f32, colour: Colour) {
+	vertices := [?]Vertex {
+		//1
+		{pos_coords = {pos.x + scale.x, pos.y + scale.y, 0.0}, texture_coords = {1.0, 0.0}},
+		{pos_coords = {pos.x + scale.x, pos.y, 0.0}, texture_coords = {1.0, 1.0}},
+		{pos_coords = {pos.x, pos.y + scale.y, 0.0}, texture_coords = {0.0, 0.0}},
+		//2
+		{pos_coords = {pos.x + scale.x, pos.y, 0.0}, texture_coords = {1.0, 1.0}},
+		{pos_coords = {pos.x, pos.y, 0.0}, texture_coords = {0.0, 1.0}},
+		{pos_coords = {pos.x, pos.y + scale.y, 0.0}, texture_coords = {0.0, 0.0}},
+	}
+	for &vert in vertices {
+		vert.colour   = colour_apply(colour)
+	}
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		int(ctx.batch_vertices) * size_of(Vertex),
+		size_of(vertices),
+		&vertices,
+	)
+	ctx.batch_vertices += len(vertices)
 }
 
 font_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
@@ -457,6 +461,7 @@ draw_text :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size: f32, co
 	}
 }
 
+@(private)
 colour_apply :: proc(colour: Colour) -> [4]f32 {
 	r := f32(colour.r) / 255.
 	g := f32(colour.g) / 255.
@@ -465,16 +470,34 @@ colour_apply :: proc(colour: Colour) -> [4]f32 {
 	return {r, g, b, a}
 }
 
+vertex_apply :: proc(pos: [3]f32, scale: [2]f32, rotation: f32) -> [3]f32 {
+	adjusted_scale := [2]f32{scale.x/2., scale.y/2.}
+	i := glm.identity(glm.mat4)
+	t := glm.mat4Translate({pos.x + adjusted_scale.x,pos.y + adjusted_scale.y, 0.})
+	s := glm.mat4Scale({adjusted_scale.x,adjusted_scale.y,1.0})
+	rot := glm.mat4Rotate({0.0,0.0,1.0}, glm.radians(rotation))
+	i *= t
+	/* i *= rot */
+	i *= s
+	temp_pos := [4]f32{pos.x, pos.y, pos.z, 1.0}
+	ret := i * temp_pos
+	return ret.xyz
+}
+
+
 commit :: proc() {
-	render_group_commit(ctx.active_render_group)
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
+	vertex_attrib_apply()
+	program_load(.TEXTURE)
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+	gl.DrawArrays(gl.TRIANGLES, 0, ctx.batch_vertices)
+	ctx.batch_vertices = 0
+	/* render_group_commit(ctx.active_render_group) */
 }
 
 vertex_attrib_apply :: proc() {
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), (0 * size_of(f32)))
 	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
-	gl.VertexAttribPointer(2, 3, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
-	gl.VertexAttribPointer(3, 2, gl.FLOAT, false, size_of(Vertex), (8 * size_of(f32)))
-	gl.VertexAttribPointer(4, 1, gl.FLOAT, false, size_of(Vertex), (10 * size_of(f32)))
-	gl.VertexAttribPointer(5, 4, gl.FLOAT, false, size_of(Vertex), (11 * size_of(f32)))
-	gl.VertexAttribPointer(6, 4, gl.FLOAT, false, size_of(Vertex), (15 * size_of(f32)))
+	gl.VertexAttribPointer(2, 4, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
+	gl.VertexAttribPointer(3, 4, gl.FLOAT, false, size_of(Vertex), (9 * size_of(f32)))
 }
