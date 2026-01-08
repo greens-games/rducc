@@ -26,6 +26,11 @@
         - have all groups be a linked list/stack
         - When we commit go through stack and commit each render group
 
+## Some metholodogies to think of
+- Write the instructions needed to accomplish task so it run; we can try this more at work too
+- If sets of instructions are used more than once; compress to function
+- If sets of variables need to be used in more than once place; compress into struct/class
+    - I kind of already do this but let's to do it more
 
 
 ## Current tasks
