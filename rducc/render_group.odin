@@ -3,6 +3,8 @@ package rducc
 import gl "vendor:OpenGL"
 import "core:mem"
 
+//TODO: Unsure of the future of Render Groups might have some use later on but for now let's put it on the back burner
+
 Render_Group :: struct {
 	vbo:                  [4]u32, //Could be dynamic
 	num_vertices:         i32,

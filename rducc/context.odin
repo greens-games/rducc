@@ -1,5 +1,7 @@
 package rducc
 
+import "core:mem/virtual"
+import "core:mem"
 import "vendor:glfw"
 import gl "vendor:OpenGL"
 
@@ -49,6 +51,7 @@ Context :: struct {
 
 	//Textures
 	curr_texture_hndl:    u32,
+	loaded_texture:       Ducc_Texture,
 	default_font:         Ducc_Font,
 
 	//NOTE: This should be removed

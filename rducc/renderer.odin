@@ -1,5 +1,7 @@
 package rducc
 
+import "core:mem/virtual"
+import "core:mem"
 import "core:math/linalg"
 import "core:strings"
 import "base:runtime"
@@ -111,6 +113,8 @@ init :: proc() {
 	gl.EnableVertexAttribArray(2)
 	gl.EnableVertexAttribArray(3)
 
+
+	//TODO: Only load our default shader and clean up anything relying on this stuff
 	shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
 	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
@@ -120,7 +124,7 @@ init :: proc() {
 
 	white_rect: [16*16*4]u8
 	slice.fill(white_rect[:], 255)
-	ctx.shape_texture_empty = sprite_load(white_rect[:], 16, 16)
+	/* ctx.shape_texture_empty = sprite_load(white_rect[:], 16, 16) */
 	projection_set()
 }
 
@@ -190,30 +194,14 @@ pixel :: proc(pos: [3]f32, colour: Colour) {
 }
 
 draw_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.RECT])
-
-	v := vertices_index_box
-	r := f32(colour.r) / 255.
-	g := f32(colour.g) / 255.
-	b := f32(colour.b) / 255.
-	a := f32(colour.a) / 255.
-
-	for &vert in v {
-		/* vert.pos = pos
-		vert.scale = scale
-		vert.rotation = rotation */
-		vert.colour = colour_apply(colour)
-		vert.border_colour = [4]f32{0,0,0,0}
+	texture := ctx.shape_texture_empty
+	if (texture.hndl != ctx.loaded_texture.hndl) {
+		commit()
 	}
 
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		int(ctx.active_render_group.box_vertices) * size_of(Vertex),
-		size_of(v),
-		&v,
-	)
+	ctx.loaded_texture = texture
 
-	ctx.active_render_group.box_vertices += len(vertices_index_box)
+	push_vertices(pos, scale, colour)
 }
 
 draw_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
@@ -369,18 +357,12 @@ draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation:
 	//ALl functions will have to do the texture data
 	//Can probably just be 1 render commit
 	//Also update atlas
-	if (ctx.active_render_group.curr_texture_hndl == 0) {
-		gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
-		ctx.active_render_group.curr_texture_hndl = texture.hndl
-	} else if (texture.hndl != ctx.active_render_group.curr_texture_hndl) {
-		render_group_texture_batch_commit(ctx.active_render_group)
-		gl.BindTexture(gl.TEXTURE_2D, texture.hndl)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.height, texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.data)
-		ctx.active_render_group.curr_texture_hndl = texture.hndl
+	if (texture.hndl != ctx.active_render_group.curr_texture_hndl) {
+		commit()
 	}
 
-	push_vertex(pos, scale, colour)
+	ctx.loaded_texture = texture
+	push_vertices(pos, scale, colour)
 
 	/* gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
 	gl.BufferSubData(
@@ -392,16 +374,16 @@ draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation:
 	ctx.active_render_group.texture_vertices += len(vertices) */
 }
 
-push_vertex :: proc(pos: [3]f32, scale: [2]f32, colour: Colour) {
+push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour) {
 	vertices := [?]Vertex {
 		//1
 		{pos_coords = {pos.x + scale.x, pos.y + scale.y, 0.0}, texture_coords = {1.0, 0.0}},
-		{pos_coords = {pos.x + scale.x, pos.y, 0.0}, texture_coords = {1.0, 1.0}},
-		{pos_coords = {pos.x, pos.y + scale.y, 0.0}, texture_coords = {0.0, 0.0}},
+		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {1.0, 1.0}},
+		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {0.0, 0.0}},
 		//2
-		{pos_coords = {pos.x + scale.x, pos.y, 0.0}, texture_coords = {1.0, 1.0}},
-		{pos_coords = {pos.x, pos.y, 0.0}, texture_coords = {0.0, 1.0}},
-		{pos_coords = {pos.x, pos.y + scale.y, 0.0}, texture_coords = {0.0, 0.0}},
+		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {1.0, 1.0}},
+		{pos_coords = {pos.x, pos.y, 0.0},                     texture_coords = {0.0, 1.0}},
+		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {0.0, 0.0}},
 	}
 	for &vert in vertices {
 		vert.colour   = colour_apply(colour)
@@ -486,6 +468,8 @@ vertex_apply :: proc(pos: [3]f32, scale: [2]f32, rotation: f32) -> [3]f32 {
 
 
 commit :: proc() {
+	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, ctx.loaded_texture.data)
 	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
 	vertex_attrib_apply()
 	program_load(.TEXTURE)

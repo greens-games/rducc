@@ -229,7 +229,8 @@ run :: proc() {
 		rducc.render_group_start(&r_group1)
 		/* rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED) */
 		/* rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16) */
-		widget_token(&percy_entity, m_pos, m_pos_change, .ABSOLUTE)
+		rducc.draw_sprite(percy_entity.texture^, percy_entity.pos, percy_entity.scale)
+		rducc.draw_box({100.0,100.0,0.0}, {32.0, 32.0})
 		rducc.commit()
 		/* rducc.commit() */
 
