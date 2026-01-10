@@ -60,28 +60,3 @@ renderer_circle_outline_draw :: proc(
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 	program_load(Shader_Progams.PRIMITIVE)
 }
-
-cell_drawing :: proc() {
-		for row, r in game_ctx.grid {
-			for col, c in row {
-				if col.occupiers[0] != -1 {
-					colour: rducc.Colour
-					colour = {255,255,255,125}
-					rducc.draw_box({f32(c) * SPRITE_SCALE.x, f32(r) * SPRITE_SCALE.y, 0.0}, SPRITE_SCALE, colour = colour)
-				}
-			}
-		}
-
-		//TC: Assign Grid Cells
-		for idx in 0..< game_ctx.entity_count {
-			entity := &game_ctx.entities[idx]
-			cell_pos := pos_to_cell(entity.pos)
-			curr_pos := entity.curr_cell
-			col := cell_pos.x
-			row := cell_pos.y
-			game_ctx.grid[curr_pos.y][curr_pos.x].occupiers[0] = -1
-			game_ctx.grid[row][col].occupiers[0] = entity.id
-			entity.curr_cell = {col, row}
-		}
-
-}
