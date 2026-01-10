@@ -2,6 +2,7 @@ package main
 
 import "core:image"
 import "core:image/png"
+import "core:slice"
 
 import "core:time"
 import "core:hash"
@@ -148,6 +149,11 @@ run :: proc() {
 	image, image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
 	percy_texture := rducc.sprite_load(image.pixels.buf[:], image.height, image.width)
 
+
+	white_box: [16*16*4]u8
+	slice.fill(white_box[:], 255)
+	test_texture := rducc.sprite_load(white_box[:], 16, 16)
+	
 	percy_entity: Entity
 	percy_entity.texture = &percy_texture
 	percy_entity.scale = SPRITE_SCALE
@@ -185,57 +191,17 @@ run :: proc() {
 		mouse_entity.pos = {m_pos.x - 2, m_pos.y - 2, 0.0}
 		mouse_entity.collider.origin = {m_pos.x - 2, m_pos.y - 2}
 		
-		//TC: Assign Grid Cells
-		for idx in 0..< game_ctx.entity_count {
-			entity := &game_ctx.entities[idx]
-			cell_pos := pos_to_cell(entity.pos)
-			curr_pos := entity.curr_cell
-			col := cell_pos.x
-			row := cell_pos.y
-			game_ctx.grid[curr_pos.y][curr_pos.x].occupiers[0] = -1
-			game_ctx.grid[row][col].occupiers[0] = entity.id
-			entity.curr_cell = {col, row}
-		}
-
 		//TC: RENDER
 		rducc.background_clear(rducc.GRAY)
-		/* rducc.render_group_start(&r_group2)
-		if widget_button("Hello", {50, 50}, {64,32}, m_pos, .RELATIVE) {
-			fmt.println("Activated button")
-		}
-		rducc.render_group_finish() */
-
-
-		for row, r in game_ctx.grid {
-			for col, c in row {
-				if col.occupiers[0] != -1 {
-					colour: rducc.Colour
-					colour = {255,255,255,125}
-					rducc.draw_box({f32(c) * SPRITE_SCALE.x, f32(r) * SPRITE_SCALE.y, 0.0}, SPRITE_SCALE, colour = colour)
-				}
-			}
-		}
-
-		for idx in 0..<game_ctx.entity_count {
-			e := game_ctx.entities[idx]
-			switch e.kind {
-			case .TOKEN:
-				/* rducc.draw_sprite(e.pos, e.scale, e.rotation, rducc.WHITE) */
-				rducc.draw_box({e.pos.x, e.pos.y, 10.0}, e.scale, e.rotation, rducc.BLACK)
-			}
-		}
-
 
 		rducc.render_group_start(&r_group1)
 		/* rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED) */
 		/* rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16) */
-		rducc.draw_sprite(percy_entity.texture^, percy_entity.pos, percy_entity.scale)
 		rducc.draw_box({100.0,100.0,0.0}, {32.0, 32.0})
+		/* rducc.draw_sprite(test_texture, {100.0,100.0,0.0}, {32.0, 32.0}) */
+		rducc.draw_sprite(percy_entity.texture^, percy_entity.pos, percy_entity.scale)
 		rducc.commit()
-		/* rducc.commit() */
 
-		//TC: CLEANUP
-		//NOTE: This is really bad and should probably not stay, find a better way to free bullets
 		free_all()
 		prev_m_pos = m_pos
 	}
@@ -290,49 +256,6 @@ widget_button :: proc(text: string, button_pos, button_size, mouse_pos: [2]f32, 
 
 	return clicked
 }
-
-widget_text_box :: proc(id: int, pos: [3]f32, box_size, mouse_pos: [2]f32) {
-}
-
-widget_token :: proc(entity:^Entity,
-					 mouse_pos: [2]f32,
-					 m_pos_change: [2]f32,
-					 pos_kind: Position_Kind) -> bool {
-	clicked := false
-	_pos := entity.pos
-	switch pos_kind {
-	case .RELATIVE:
-		_pos.x = f32(rducc.ctx.window_width)  * (entity.pos.x * 0.01) - entity.scale.x
-		_pos.y = f32(rducc.ctx.window_height) * (entity.pos.y * 0.01) - entity.scale.y
-	case .ABSOLUTE:
-	}
-	mouse_collider: pducc.Collider 
-	mouse_collider = {}
-	mouse_collider.scale = {8.0, 8.0}
-	mouse_collider.kind = .RECT
-	mouse_collider.origin = rducc.window_mouse_pos()
-
-	button_collider: pducc.Collider = {}
-	button_collider.origin = _pos.xy
-	button_collider.scale = entity.scale
-	button_collider.kind = .RECT
-	colour := rducc.BLUE
-
-	if pducc.rect_collision(mouse_collider, button_collider) {
-		colour = rducc.GREEN
-		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) {
-			clicked = true
-			m_pos := rducc.window_mouse_pos()
-			diff_pos := m_pos - entity.pos.xy
-			entity.pos += {m_pos_change.x, m_pos_change.y, 0.0}
-		}
-	}
-
-	rducc.draw_sprite(entity.texture^, entity.pos, entity.scale)
-
-	return clicked
-}
-
 
 debug_profile :: proc(a: rawptr, msg: string) {
 	start := time.now()

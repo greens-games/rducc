@@ -1,2 +1,2 @@
 call odin build . -debug
-call raddbg ducc.exe --auto_run
+start raddbg ducc.exe --auto_run

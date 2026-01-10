@@ -122,10 +122,11 @@ init :: proc() {
 	shader_load("res/vert_grid.glsl", "res/grid.glsl")
 	ctx.default_font = font_load("res/Font3.bmp", 32, 32)
 
-	white_rect: [16*16*4]u8
-	slice.fill(white_rect[:], 255)
-	/* ctx.shape_texture_empty = sprite_load(white_rect[:], 16, 16) */
+	white_box: [16*16*4]u8
+	slice.fill(white_box[:], 255)
+	ctx.shape_texture_empty = sprite_load(white_box[:], 16, 16)
 	projection_set()
+	program_load(.TEXTURE)
 }
 
 projection_set :: proc() {
@@ -195,7 +196,7 @@ pixel :: proc(pos: [3]f32, colour: Colour) {
 
 draw_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	texture := ctx.shape_texture_empty
-	if (texture.hndl != ctx.loaded_texture.hndl) {
+	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
 
@@ -342,6 +343,7 @@ sprite_load :: proc(data: []u8, height, width: int)  -> Ducc_Texture {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
 	gl.GenTextures(1, &texture_hndl)
 
+	/* gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, ctx.loaded_texture.data) */
 	texture: Ducc_Texture
 	//TODO: We probably want our system to not have to store all our texture data in memory all the time
 	texture.data   = raw_data(data) 
@@ -353,25 +355,13 @@ sprite_load :: proc(data: []u8, height, width: int)  -> Ducc_Texture {
 
 //Takes in position data, and texture data to be drawn
 draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
-	//TODO: cleanup this stuff
-	//ALl functions will have to do the texture data
-	//Can probably just be 1 render commit
-	//Also update atlas
-	if (texture.hndl != ctx.active_render_group.curr_texture_hndl) {
+	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
 
 	ctx.loaded_texture = texture
 	push_vertices(pos, scale, colour)
 
-	/* gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		int(ctx.active_render_group.texture_vertices) * size_of(Vertex),
-		size_of(vertices),
-		&vertices,
-	)
-	ctx.active_render_group.texture_vertices += len(vertices) */
 }
 
 push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour) {
@@ -452,27 +442,13 @@ colour_apply :: proc(colour: Colour) -> [4]f32 {
 	return {r, g, b, a}
 }
 
-vertex_apply :: proc(pos: [3]f32, scale: [2]f32, rotation: f32) -> [3]f32 {
-	adjusted_scale := [2]f32{scale.x/2., scale.y/2.}
-	i := glm.identity(glm.mat4)
-	t := glm.mat4Translate({pos.x + adjusted_scale.x,pos.y + adjusted_scale.y, 0.})
-	s := glm.mat4Scale({adjusted_scale.x,adjusted_scale.y,1.0})
-	rot := glm.mat4Rotate({0.0,0.0,1.0}, glm.radians(rotation))
-	i *= t
-	/* i *= rot */
-	i *= s
-	temp_pos := [4]f32{pos.x, pos.y, pos.z, 1.0}
-	ret := i * temp_pos
-	return ret.xyz
-}
-
-
 commit :: proc() {
+	gl.ActiveTexture(gl.TEXTURE0 + u32(ctx.loaded_texture.hndl))
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, ctx.loaded_texture.data)
+	gl.Uniform1i(ctx.loaded_uniforms["ourTexture"].location, i32(ctx.loaded_texture.hndl))
+	/* gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, ctx.loaded_texture.data) */
 	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
 	vertex_attrib_apply()
-	program_load(.TEXTURE)
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 	gl.DrawArrays(gl.TRIANGLES, 0, ctx.batch_vertices)
 	ctx.batch_vertices = 0
