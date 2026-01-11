@@ -364,9 +364,12 @@ push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour, is_circle := f
 		/* vert.border_colour = colour_apply(BLANK) */
 		vert.is_circle = f32(int(is_circle))
 		vert.dummy_pos = vertices_index_box[i].pos_coords
+	}
+
+	/* for vert in vertices {
 		ctx.batch_vertices[ctx.batch_vertices_count] = vert
 		ctx.batch_vertices_count += 1
-	}
+	} */
 
 	//TODO: Instead of using subData here we can store all vertex info on the CPU in Context then pass that to the gpu in @commit()
 	gl.BufferSubData(
@@ -451,11 +454,18 @@ commit :: proc() {
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, ctx.loaded_texture.data)
 	vertex_attrib_apply()
 	gl.GenerateMipmap(gl.TEXTURE_2D)
-	/* gl.BufferSubData(
+	if window_is_key_pressed(.KEY_A) {
+		for i in 0..<ctx.batch_vertices_count {
+			fmt.println(ctx.batch_vertices[i])
+	}
+		fmt.println()
+	}
+	/* blah := ctx.batch_vertices[:ctx.batch_vertices_count]
+	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		int(ctx.batch_vertices_count) * size_of(Vertex),
-		int(ctx.batch_vertices_count),
-		ctx.batch_vertices[:ctx.batch_vertices_count],
+		size_of(ctx.batch_vertices[:ctx.batch_vertices_count]),
+		&blah,
 	) */
 	gl.DrawArrays(gl.TRIANGLES, 0, ctx.batch_vertices_count)
 	ctx.batch_vertices_count = 0
