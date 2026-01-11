@@ -48,6 +48,8 @@ BLACK :: Colour{0, 0, 0, 255} // Black
 BLANK :: Colour{0, 0, 0, 0} // Blank (Transparent)
 MAGENTA :: Colour{255, 0, 255, 255} // Magenta
 
+DEFAULT_BUFF_SIZE :: mem.Kilobyte * 64
+
 vertices_index_box := [?]Vertex {
 	{pos_coords = {1.0,   1.0, 1.0}},
 	{pos_coords = {1.0,  -1.0, 1.0}},
@@ -78,6 +80,9 @@ Vertex :: struct {
 	texture_coords: [2]f32,
 	colour:         [4]f32,
 	border_colour:  [4]f32,
+	is_circle:       f32,
+	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
+	dummy_pos:     [3]f32,
 }
 
 init :: proc() {
@@ -105,6 +110,9 @@ init :: proc() {
 	ctx.indices[4] = 2
 	ctx.indices[5] = 3
 
+	gl.GenBuffers(1, &ctx.active_vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_vbo)
+	gl.BufferData(gl.ARRAY_BUFFER, DEFAULT_BUFF_SIZE, nil, gl.DYNAMIC_DRAW)
 	gl.GenVertexArrays(1, &ctx.active_vao)
 
 	gl.BindVertexArray(ctx.active_vao)
@@ -112,19 +120,18 @@ init :: proc() {
 	gl.EnableVertexAttribArray(1)
 	gl.EnableVertexAttribArray(2)
 	gl.EnableVertexAttribArray(3)
+	gl.EnableVertexAttribArray(4)
+	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
+	gl.EnableVertexAttribArray(5)
 
 
 	//TODO: Only load our default shader and clean up anything relying on this stuff
-	shader_load("res/vert_2d.glsl", "res/frag_primitive.glsl")
-	shader_load("res/vert_2d.glsl", "res/circle_shader.glsl")
-	shader_load("res/vert_2d.glsl", "res/circle_outline_shader.glsl")
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
-	shader_load("res/vert_grid.glsl", "res/grid.glsl")
 	ctx.default_font = font_load("res/Font3.bmp", 32, 32)
 
-	white_rect: [16*16*4]u8
-	slice.fill(white_rect[:], 255)
-	/* ctx.shape_texture_empty = sprite_load(white_rect[:], 16, 16) */
+	white_rect: []u8 = make_slice([]u8, 1024) //TODO: This might need to be an arena or something
+	slice.fill(white_rect, 255)
+	ctx.shape_texture_empty = sprite_load(white_rect, 16, 16)
 	projection_set()
 }
 
@@ -148,11 +155,6 @@ projection_set :: proc() {
 		-100.0,
 		100.0,
 	) */
-	program_load(Shader_Progams.CIRCLE)
-	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
-	program_load(Shader_Progams.PRIMITIVE)
-	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
-	program_load(Shader_Progams.TEXTURE)
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
 }
 
@@ -195,7 +197,7 @@ pixel :: proc(pos: [3]f32, colour: Colour) {
 
 draw_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	texture := ctx.shape_texture_empty
-	if (texture.hndl != ctx.loaded_texture.hndl) {
+	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
 
@@ -232,29 +234,14 @@ draw_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour :
 }
 
 draw_circle :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.CIRCLE])
-
-	v := vertices_index_box
-	r := f32(colour.r) / 255.
-	g := f32(colour.g) / 255.
-	b := f32(colour.b) / 255.
-	a := f32(colour.a) / 255.
-
-	for &vert in v {
-		/* vert.pos      = pos
-		vert.scale    = radius
-		vert.rotation = rotation */
-		vert.colour   = colour_apply(colour)
+	texture := ctx.shape_texture_empty
+	if (ctx.loaded_texture.hndl <= 0 && texture.hndl != ctx.loaded_texture.hndl) {
+		commit()
 	}
 
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		int(ctx.active_render_group.circle_vertices) * size_of(Vertex),
-		size_of(v),
-		&v,
-	)
+	ctx.loaded_texture = texture
 
-	ctx.active_render_group.circle_vertices += len(vertices_index_box)
+	push_vertices(pos, radius, colour, is_circle = true)
 }
 
 sprite_atlas_load :: proc(f_name: cstring, sprite_size: i32) -> Ducc_Texture_Atlas {
@@ -353,28 +340,15 @@ sprite_load :: proc(data: []u8, height, width: int)  -> Ducc_Texture {
 
 //Takes in position data, and texture data to be drawn
 draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
-	//TODO: cleanup this stuff
-	//ALl functions will have to do the texture data
-	//Can probably just be 1 render commit
-	//Also update atlas
-	if (texture.hndl != ctx.active_render_group.curr_texture_hndl) {
+	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
 
 	ctx.loaded_texture = texture
 	push_vertices(pos, scale, colour)
-
-	/* gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		int(ctx.active_render_group.texture_vertices) * size_of(Vertex),
-		size_of(vertices),
-		&vertices,
-	)
-	ctx.active_render_group.texture_vertices += len(vertices) */
 }
 
-push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour) {
+push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour, is_circle := false) {
 	vertices := [?]Vertex {
 		//1
 		{pos_coords = {pos.x + scale.x, pos.y + scale.y, 0.0}, texture_coords = {1.0, 0.0}},
@@ -385,18 +359,23 @@ push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour) {
 		{pos_coords = {pos.x, pos.y, 0.0},                     texture_coords = {0.0, 1.0}},
 		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {0.0, 0.0}},
 	}
-	for &vert in vertices {
+	for &vert, i in vertices {
 		vert.colour   = colour_apply(colour)
+		/* vert.border_colour = colour_apply(BLANK) */
+		vert.is_circle = f32(int(is_circle))
+		vert.dummy_pos = vertices_index_box[i].pos_coords
+		ctx.batch_vertices[ctx.batch_vertices_count] = vert
+		ctx.batch_vertices_count += 1
 	}
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
+	//TODO: Instead of using subData here we can store all vertex info on the CPU in Context then pass that to the gpu in @commit()
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
-		int(ctx.batch_vertices) * size_of(Vertex),
+		int(ctx.batch_vertices_count) * size_of(Vertex),
 		size_of(vertices),
 		&vertices,
 	)
-	ctx.batch_vertices += len(vertices)
+	ctx.batch_vertices_count += len(vertices)
 }
 
 font_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
@@ -470,13 +449,16 @@ vertex_apply :: proc(pos: [3]f32, scale: [2]f32, rotation: f32) -> [3]f32 {
 commit :: proc() {
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, ctx.loaded_texture.data)
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
 	vertex_attrib_apply()
-	program_load(.TEXTURE)
 	gl.GenerateMipmap(gl.TEXTURE_2D)
-	gl.DrawArrays(gl.TRIANGLES, 0, ctx.batch_vertices)
-	ctx.batch_vertices = 0
-	/* render_group_commit(ctx.active_render_group) */
+	/* gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		int(ctx.batch_vertices_count) * size_of(Vertex),
+		int(ctx.batch_vertices_count),
+		ctx.batch_vertices[:ctx.batch_vertices_count],
+	) */
+	gl.DrawArrays(gl.TRIANGLES, 0, ctx.batch_vertices_count)
+	ctx.batch_vertices_count = 0
 }
 
 vertex_attrib_apply :: proc() {
@@ -484,4 +466,7 @@ vertex_attrib_apply :: proc() {
 	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
 	gl.VertexAttribPointer(2, 4, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
 	gl.VertexAttribPointer(3, 4, gl.FLOAT, false, size_of(Vertex), (9 * size_of(f32)))
+	gl.VertexAttribPointer(4, 1, gl.FLOAT, false, size_of(Vertex), (13 * size_of(f32)))
+	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
+	gl.VertexAttribPointer(5, 3, gl.FLOAT, false, size_of(Vertex), (14 * size_of(f32)))
 }

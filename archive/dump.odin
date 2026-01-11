@@ -60,3 +60,15 @@ renderer_circle_outline_draw :: proc(
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, raw_data(ctx.indices))
 	program_load(Shader_Progams.PRIMITIVE)
 }
+
+cell_slots :: proc() {
+		for row, r in game_ctx.grid {
+			for col, c in row {
+				if col.occupiers[0] != -1 {
+					colour: rducc.Colour
+					colour = {255,255,255,125}
+					rducc.draw_box({f32(c) * SPRITE_SCALE.x, f32(r) * SPRITE_SCALE.y, 0.0}, SPRITE_SCALE, colour = colour)
+				}
+			}
+		}
+}

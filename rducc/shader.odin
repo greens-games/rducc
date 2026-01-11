@@ -12,6 +12,7 @@ Shader_Shape :: enum {
 
 //TODO: Free uniforma data
 shader_load :: proc(vs_shader, fs_shader: string) -> u32 {
+
 	//TODO:manual shader loading, compiling, etc... (Makes debugging easier), use OpenGL/helpers.odin as example
 	program_id, ok := gl.load_shaders_file(vs_shader, fs_shader)
 	if !ok {

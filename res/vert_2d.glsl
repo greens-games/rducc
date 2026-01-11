@@ -1,35 +1,34 @@
-#version 330 core
+#version 330 core 
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aTexCoord;
 layout (location = 2) in vec4 i_colour; //inner colour
 layout (location = 3) in vec4 b_colour; // border colour
+//flag for if it's a circle or not this probably should be handled differently I don't think we want it to be a float
+layout (location = 4) in float isCircle; 
+//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
+layout (location = 5) in vec3 dummy_pos;
 
 out vec2 TexCoord;
 out vec3 pos;
 out vec4 colour;
 out vec4 borderColour;
+out float _isCircle;
+//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
+out vec3 _dummy_pos;
 
 /* uniform mat4 transform; */
 uniform mat4 projection;
 
 void main()
 {
-	//make transformation matrix
-	/* mat4 ident = mat4(1.0);
-	vec3 adjusted_scale = vec3(localScale.x / 2.0, localScale.y / 2.0, localPos.z);
-	vec3 adjustLocalPos = vec3(localPos.x + adjusted_scale.x, localPos.y + adjusted_scale.y, localPos.z);
-	ident[3].xyz = adjustLocalPos.xyz;
-	mat4 s = mat4(1.0);
-	s[0][0] = adjusted_scale[0];
-	s[1][1] = adjusted_scale[1];
-	s[2][2] = adjusted_scale[2];
-	s[3][3] = 1; */
-	//TODO: Rotation stuff
-	/* ident = ident * s; */
-	gl_Position = projection * vec4(aPos, 1.0);
+	vec4 proj_pos = projection * vec4(aPos, 1.0);
 	TexCoord = aTexCoord;
-	pos = aPos;
+	pos = proj_pos.xyz;
 	colour = i_colour;
 	borderColour = b_colour;
+	_isCircle = isCircle;
+	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
+	_dummy_pos = dummy_pos;
+	gl_Position = proj_pos;
 }
