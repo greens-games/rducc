@@ -24,6 +24,7 @@ import "core:fmt"
 import glm "core:math/linalg/glsl"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
+
 Colour :: distinct [4]int
 //NOTE: These are ripped straight from Raylib could probably do something else if we wanted
 LIGHTGRAY :: Colour{200, 200, 200, 255} // Light Gray
@@ -133,13 +134,19 @@ init :: proc() {
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 	font_image, font_image_ok := image.load_from_bytes(#load("../res/Font3.bmp"))
 	assert(font_image_ok == nil)
-	/* for b, i in font_image.pixels.buf {
-		fmt.print(b)
-		if i % 8 == 0 {
+	pixel_count := 0
+	for b, i in font_image.pixels.buf {
+		fmt.printf("%02X", b)
+		pixel_count += 1
+		if pixel_count % 3 == 0 {
+			fmt.printf(" 0x")
+			pixel_count = 0
+		}
+		if i % font_image.width == 0 {
 			fmt.println()
 			fmt.println()
 		}
-	} */
+	}
 	width, height, channels: i32
 	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 0)
 	/* ctx.default_font = font_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32, 32) */
