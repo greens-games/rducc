@@ -47,3 +47,7 @@
 ## Other fun stuff
 - First understand the existing odin context allocators and what they are doing
 - Write own context allocator for an Arena
+
+
+## Working text commit
+- 13233e2da0077e854ea2a882fe48afc2ef2be665
