@@ -62,14 +62,14 @@ Context :: struct {
 
 Ducc_Texture :: struct {
 	hndl:   u32,
-	data:   [^]byte,
+	data:   []byte,
 	height: i32,
 	width:  i32,
 }
 
 Ducc_Texture_Atlas :: struct {
 	hndl:        u32,
-	data:        [^]byte,
+	data:        []byte,
 	height:      i32,
 	width:       i32,
 	rows:        i32,
@@ -79,7 +79,7 @@ Ducc_Texture_Atlas :: struct {
 
 Ducc_Font :: struct {
 	hndl:        u32,
-	data:        [^]byte,
+	data:        []byte,
 	height:      i32,
 	width:       i32,
 	rows:        i32,

@@ -1,5 +1,9 @@
 package rducc
 
+import "core:hash"
+import "core:image"
+import "core:image/bmp"
+
 import "core:mem/virtual"
 import "core:mem"
 import "core:math/linalg"
@@ -127,7 +131,19 @@ init :: proc() {
 
 	//TODO: Only load our default shader and clean up anything relying on this stuff
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
-	ctx.default_font = font_load("res/Font3.bmp", 32, 32)
+	font_image, font_image_ok := image.load_from_bytes(#load("../res/Font3.bmp"))
+	assert(font_image_ok == nil)
+	/* for b, i in font_image.pixels.buf {
+		fmt.print(b)
+		if i % 8 == 0 {
+			fmt.println()
+			fmt.println()
+		}
+	} */
+	width, height, channels: i32
+	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 0)
+	/* ctx.default_font = font_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32, 32) */
+	ctx.default_font = font_load(data[:width * height], int(height), int(width), 32, 32)
 
 	white_rect: []u8 = make_slice([]u8, 1024) //TODO: This might need to be an arena or something
 	slice.fill(white_rect, 255)
@@ -244,12 +260,8 @@ draw_circle :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := 
 	push_vertices(pos, radius, colour, is_circle = true)
 }
 
-sprite_atlas_load :: proc(f_name: cstring, sprite_size: i32) -> Ducc_Texture_Atlas {
+sprite_atlas_load :: proc(data: []u8, height, width:int, sprite_size: i32) -> Ducc_Texture_Atlas {
 	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
-	height, width, channels_in_file: i32
-	stbi.set_flip_vertically_on_load(1)
-	data := stbi.load(f_name, &height, &width, &channels_in_file, 4)
-
 	texture_hndl: u32
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
@@ -260,27 +272,26 @@ sprite_atlas_load :: proc(f_name: cstring, sprite_size: i32) -> Ducc_Texture_Atl
 
 	texture_atlas: Ducc_Texture_Atlas
 	texture_atlas.data        = data
-	texture_atlas.height      = height
-	texture_atlas.width       = width
+	texture_atlas.height      = i32(height)
+	texture_atlas.width       = i32(width)
 	texture_atlas.hndl        = texture_hndl
 	texture_atlas.sprite_size = sprite_size
-	texture_atlas.rows        = (height/sprite_size) 
-	texture_atlas.cols        = (width/sprite_size) 
+	texture_atlas.rows        = (i32(height)/sprite_size) 
+	texture_atlas.cols        = (i32(width)/sprite_size) 
 	return texture_atlas
 }
 
 //Takes in position data, texture data to be drawn, and index into the atlas from top down
 //i.e 0,0 will be top left. atlas.rows - 1, atlas.cols - 1 will be bottom right
-draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32, idx: [2]i32, rotation: f32 = 0.0, colour := WHITE) {
-	if (ctx.active_render_group.curr_texture_hndl == 0) {
-		gl.BindTexture(gl.TEXTURE_2D, atlas.hndl)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, atlas.height, atlas.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, atlas.data)
-		ctx.active_render_group.curr_texture_hndl = atlas.hndl
-	} else if (atlas.hndl != ctx.active_render_group.curr_texture_hndl) {
-		render_group_texture_batch_commit(ctx.active_render_group)
-		gl.BindTexture(gl.TEXTURE_2D, atlas.hndl)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, atlas.height, atlas.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, atlas.data)
-		ctx.active_render_group.curr_texture_hndl = atlas.hndl
+draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32, idx: [2]i32, rotation: f32 = 0.0, colour := RED) {
+	if (ctx.loaded_texture.hndl != 0 && atlas.hndl != ctx.loaded_texture.hndl) {
+		commit()
+	}
+	ctx.loaded_texture = Ducc_Texture {
+		data   = atlas.data,
+		height = i32(atlas.height),
+		width  = i32(atlas.width),
+		hndl   = atlas.hndl,
 	}
 
 	offset := 1.0/f32(atlas.rows)
@@ -293,36 +304,32 @@ draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32,
 	x_offset_plus_one := f32(idx.x + 1) * offset
 	vertices := [?]Vertex {
 		//1
-		{pos_coords = {1.0, 1.0,  0.0}, texture_coords = {x_offset_plus_one, y_offset}},
-		{pos_coords = {1.0, -1.0, 0.0}, texture_coords = {x_offset_plus_one, y_offset_minus_one}},
-		{pos_coords = {-1.0, 1.0, 0.0}, texture_coords = {x_offset, y_offset}},
-		//2
-		{pos_coords = {1.0, -1.0,  0.0}, texture_coords = {x_offset_plus_one, y_offset_minus_one}},
-		{pos_coords = {-1.0, -1.0, 0.0}, texture_coords = {x_offset, y_offset_minus_one}},
-		{pos_coords = {-1.0, 1.0,  0.0}, texture_coords = {x_offset, y_offset}},
+		{pos_coords = {pos.x + scale.x, pos.y + scale.y, 0.0}, texture_coords = {x_offset_plus_one, y_offset}},
+		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {x_offset_plus_one, y_offset_minus_one}},
+		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {x_offset, y_offset}},
+		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {x_offset_plus_one, y_offset_minus_one}},
+		{pos_coords = {pos.x, pos.y, 0.0},                     texture_coords = {x_offset, y_offset_minus_one}},
+		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {x_offset, y_offset}},
 	}
 
-	for &vert in vertices {
-		/* vert.pos      = pos
-		vert.scale    = scale
-		vert.rotation = rotation */
+	for &vert, i in vertices {
 		vert.colour   = colour_apply(colour)
+		vert.is_circle = f32(int(false))
+		vert.dummy_pos = vertices_index_box[i].pos_coords
 	}
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.TEXTURE])
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
-		int(ctx.active_render_group.texture_vertices) * size_of(Vertex),
+		int(ctx.batch_vertices_count) * size_of(Vertex),
 		size_of(vertices),
 		&vertices,
 	)
-	ctx.active_render_group.texture_vertices += len(vertices)
+	ctx.batch_vertices_count += len(vertices)
 }
 
 //Read in some file name
 //Return back data about the texture
 sprite_load :: proc(data: []u8, height, width: int)  -> Ducc_Texture {
-	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
 	texture_hndl: u32
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
@@ -331,7 +338,7 @@ sprite_load :: proc(data: []u8, height, width: int)  -> Ducc_Texture {
 
 	texture: Ducc_Texture
 	//TODO: We probably want our system to not have to store all our texture data in memory all the time
-	texture.data   = raw_data(data) 
+	texture.data   = data
 	texture.height = i32(height)
 	texture.width  = i32(width)
 	texture.hndl   = texture_hndl
@@ -350,18 +357,15 @@ draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation:
 
 push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour, is_circle := false) {
 	vertices := [?]Vertex {
-		//1
 		{pos_coords = {pos.x + scale.x, pos.y + scale.y, 0.0}, texture_coords = {1.0, 0.0}},
 		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {1.0, 1.0}},
 		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {0.0, 0.0}},
-		//2
 		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {1.0, 1.0}},
 		{pos_coords = {pos.x, pos.y, 0.0},                     texture_coords = {0.0, 1.0}},
 		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {0.0, 0.0}},
 	}
 	for &vert, i in vertices {
 		vert.colour   = colour_apply(colour)
-		/* vert.border_colour = colour_apply(BLANK) */
 		vert.is_circle = f32(int(is_circle))
 		vert.dummy_pos = vertices_index_box[i].pos_coords
 	}
@@ -381,12 +385,14 @@ push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour, is_circle := f
 	ctx.batch_vertices_count += len(vertices)
 }
 
-font_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
-	return font_bmp_load(font_path, offset, sprite_size)
+//push_vertex :: proc(pos_coord, texture_coord, colour, is_circle := false)
+
+font_load :: proc(font_data: []u8, height, width: int, offset: i32, sprite_size: i32) -> Ducc_Font {
+	return font_bmp_load(font_data, height, width, offset, sprite_size)
 }
 
-font_bmp_load :: proc(font_path: cstring, offset: i32, sprite_size: i32) -> Ducc_Font {
-	texture := sprite_atlas_load(font_path, sprite_size)
+font_bmp_load :: proc(font_data: []u8, height, width: int, offset: i32, sprite_size: i32) -> Ducc_Font {
+	texture := sprite_atlas_load(font_data, height, width, sprite_size)
 	
 	font: Ducc_Font
 	font.hndl = texture.hndl
@@ -451,7 +457,7 @@ vertex_apply :: proc(pos: [3]f32, scale: [2]f32, rotation: f32) -> [3]f32 {
 
 commit :: proc() {
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, ctx.loaded_texture.data)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
 	vertex_attrib_apply()
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 	if window_is_key_pressed(.KEY_A) {

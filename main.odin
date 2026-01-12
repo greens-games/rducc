@@ -2,6 +2,7 @@ package main
 
 import "core:image"
 import "core:image/png"
+import fs "vendor:fontstash"
 
 import "core:time"
 import "core:hash"
@@ -203,8 +204,9 @@ run :: proc() {
 		rducc.background_clear(rducc.GRAY)
 		/* rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED) */
 		/* rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16) */
-		rducc.draw_circle({200.0,200.0,0.0}, {32.0, 32.0})
-		rducc.draw_box({100.0,100.0,0.0}, {32.0, 32.0})
+		rducc.draw_text(rducc.ctx.default_font, "H", {600.0, 500.0}, 16)
+		/* rducc.draw_circle({200.0,200.0,0.0}, {32.0, 32.0}, colour = rducc.RED) */
+		/* rducc.draw_box({100.0,100.0,0.0}, {32.0, 32.0}) */
 		rducc.draw_sprite(percy_entity.texture^, percy_entity.pos, percy_entity.scale)
 		rducc.commit()
 		/* rducc.commit() */
