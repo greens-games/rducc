@@ -126,30 +126,16 @@ init :: proc() {
 	gl.EnableVertexAttribArray(2)
 	gl.EnableVertexAttribArray(3)
 	gl.EnableVertexAttribArray(4)
+
 	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
 	gl.EnableVertexAttribArray(5)
 
 
-	//TODO: Only load our default shader and clean up anything relying on this stuff
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
-	font_image, font_image_ok := image.load_from_bytes(#load("../res/Font3.bmp"))
-	assert(font_image_ok == nil)
-	pixel_count := 0
-	for b, i in font_image.pixels.buf {
-		fmt.printf("%02X", b)
-		pixel_count += 1
-		if pixel_count % 3 == 0 {
-			fmt.printf(" 0x")
-			pixel_count = 0
-		}
-		if i % font_image.width == 0 {
-			fmt.println()
-			fmt.println()
-		}
-	}
+
 	width, height, channels: i32
-	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 0)
-	/* ctx.default_font = font_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32, 32) */
+	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 4)
+	//TODO: We seem to lose the texture data when we load like this over here I think
 	ctx.default_font = font_load(data[:width * height], int(height), int(width), 32, 32)
 
 	white_rect: []u8 = make_slice([]u8, 1024) //TODO: This might need to be an arena or something
@@ -201,7 +187,6 @@ debug_proc_t :: proc "c" (
 }
 
 
-//NOTE: This is exactly how raylib does their ClearBackground logic
 background_clear :: proc(color: Colour) {
 	r := f32(color.r) / 255.
 	g := f32(color.g) / 255.
@@ -268,7 +253,6 @@ draw_circle :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := 
 }
 
 sprite_atlas_load :: proc(data: []u8, height, width:int, sprite_size: i32) -> Ducc_Texture_Atlas {
-	//NOTE: Could also do BMP file parsing if I wanted to do my own stuff
 	texture_hndl: u32
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
@@ -310,13 +294,72 @@ draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32,
 	x_offset := f32(idx.x) * offset
 	x_offset_plus_one := f32(idx.x + 1) * offset
 	vertices := [?]Vertex {
-		//1
-		{pos_coords = {pos.x + scale.x, pos.y + scale.y, 0.0}, texture_coords = {x_offset_plus_one, y_offset}},
-		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {x_offset_plus_one, y_offset_minus_one}},
-		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {x_offset, y_offset}},
-		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {x_offset_plus_one, y_offset_minus_one}},
-		{pos_coords = {pos.x, pos.y, 0.0},                     texture_coords = {x_offset, y_offset_minus_one}},
-		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {x_offset, y_offset}},
+		{
+			pos_coords = {
+				pos.x + scale.x,
+				pos.y + scale.y,
+				0.0
+			},
+			texture_coords = {
+				x_offset_plus_one,
+				y_offset
+			}
+		},
+		{
+			pos_coords = {
+				pos.x + scale.x,
+				pos.y,
+				0.0
+			},
+			texture_coords = {
+				x_offset_plus_one,
+				y_offset_minus_one
+			}
+		},
+		{
+			pos_coords = {
+				pos.x,
+				pos.y + scale.y,
+				0.0
+			},
+			texture_coords = {
+				x_offset,
+				y_offset
+			}
+		},
+		{
+			pos_coords = {
+				pos.x + scale.x,
+				pos.y,
+				0.0
+			},
+			texture_coords = {
+				x_offset_plus_one,
+				y_offset_minus_one
+			}
+		},
+		{
+			pos_coords = {
+				pos.x,
+				pos.y,
+				0.0
+			},
+			texture_coords = {
+				x_offset,
+				y_offset_minus_one
+			}
+		},
+		{
+			pos_coords = {
+				pos.x,
+				pos.y + scale.y,
+				0.0
+			},
+			texture_coords = {
+				x_offset,
+				y_offset
+			}
+		},
 	}
 
 	for &vert, i in vertices {

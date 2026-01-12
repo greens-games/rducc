@@ -1,8 +1,11 @@
 package main
 
+import "core:debug/pe"
 import "core:image"
 import "core:image/png"
+import "core:image/bmp"
 import fs "vendor:fontstash"
+import stbi "vendor:stb/image"
 
 import "core:time"
 import "core:hash"
@@ -143,8 +146,22 @@ run :: proc() {
 	//Can be:
 	//a static array     (entity holds id), 
 	//an arena allocator (entity holds pointer to texture), 
-	image, image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
-	percy_texture := rducc.sprite_load(image.pixels.buf[:], image.height, image.width)
+	percy_image, image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
+	percy_texture := rducc.sprite_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width)
+	percy_texture_atlas := rducc.sprite_atlas_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width, 16)
+
+
+	//TODO:This does not load the generated font correctly (maybe see karl2d for ttf loading)
+	font_image, font_image_ok := image.load_from_bytes(#load("res/Font3.bmp"))
+	assert(font_image_ok == nil)
+	rducc.ctx.default_font = rducc.font_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32, 32)
+	my_font := rducc.sprite_atlas_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32)
+
+
+	width, height, channels: i32
+	stbi.set_flip_vertically_on_load(1)
+	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 4)
+	my_font2 := rducc.font_load(data[:width * height], int(height), int(width), 32, 32)
 
 	percy_entity: Entity
 	percy_entity.texture = &percy_texture
@@ -204,12 +221,24 @@ run :: proc() {
 		rducc.background_clear(rducc.GRAY)
 		/* rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED) */
 		/* rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16) */
-		rducc.draw_text(rducc.ctx.default_font, "H", {600.0, 500.0}, 16)
+		rducc.draw_text(my_font2, "Hello", {600.0, 500.0}, 16)
+		rducc.draw_text(rducc.ctx.default_font, "Hello", {400.0, 500.0}, 16)
+		rducc.draw_sprite_atlas(
+			my_font,
+			{600.0, 500.0, 0.0},
+			{16.0,16.0},
+			{4,4}
+		)
 		/* rducc.draw_circle({200.0,200.0,0.0}, {32.0, 32.0}, colour = rducc.RED) */
 		/* rducc.draw_box({100.0,100.0,0.0}, {32.0, 32.0}) */
 		rducc.draw_sprite(percy_entity.texture^, percy_entity.pos, percy_entity.scale)
+		rducc.draw_sprite_atlas(
+			percy_texture_atlas,
+			{650.0, 550.0, 0.0},
+			percy_entity.scale,
+			{0,0}
+		)
 		rducc.commit()
-		/* rducc.commit() */
 
 		//TC: CLEANUP
 		//NOTE: This is really bad and should probably not stay, find a better way to free bullets
@@ -274,6 +303,22 @@ debug_profile :: proc(a: rawptr, msg: string) {
 	_a()
 	end := time.now()
 	fmt.printfln("Time taken to draw box: %d", (end._nsec - start._nsec))
+}
+
+debug_print_pixels :: proc() {
+	/* pixel_count := 0
+	for b, i in font_image.pixels.buf {
+		fmt.printf("%02X", b)
+		pixel_count += 1
+		if pixel_count % 3 == 0 {
+			fmt.printf(" 0x")
+			pixel_count = 0
+		}
+		if i % font_image.width == 0 {
+			fmt.println()
+			fmt.println()
+		}
+	} */
 }
 
 test :: proc() {
