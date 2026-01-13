@@ -1,11 +1,11 @@
 package main
 
-import "core:debug/pe"
 import "core:image"
 import "core:image/png"
 import "core:image/bmp"
 import fs "vendor:fontstash"
 import stbi "vendor:stb/image"
+import "debug"
 
 import "core:time"
 import "core:hash"
@@ -162,6 +162,7 @@ run :: proc() {
 	stbi.set_flip_vertically_on_load(1)
 	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 4)
 	my_font2 := rducc.font_load(data[:width * height], int(height), int(width), 32, 32)
+	/* debug.debug_print_pixels(my_font2.data, int(my_font2.height), int(my_font2.width)) */
 
 	percy_entity: Entity
 	percy_entity.texture = &percy_texture
@@ -303,22 +304,6 @@ debug_profile :: proc(a: rawptr, msg: string) {
 	_a()
 	end := time.now()
 	fmt.printfln("Time taken to draw box: %d", (end._nsec - start._nsec))
-}
-
-debug_print_pixels :: proc() {
-	/* pixel_count := 0
-	for b, i in font_image.pixels.buf {
-		fmt.printf("%02X", b)
-		pixel_count += 1
-		if pixel_count % 3 == 0 {
-			fmt.printf(" 0x")
-			pixel_count = 0
-		}
-		if i % font_image.width == 0 {
-			fmt.println()
-			fmt.println()
-		}
-	} */
 }
 
 test :: proc() {

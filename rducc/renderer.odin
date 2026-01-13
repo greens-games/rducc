@@ -1,5 +1,8 @@
 package rducc
 
+import "core:slice/heap"
+import "../debug"
+
 import "core:hash"
 import "core:image"
 import "core:image/bmp"
@@ -133,10 +136,15 @@ init :: proc() {
 
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 
+	font_image, font_image_ok := image.load_from_bytes(#load("../res/Font3.bmp"))
+	assert(font_image_ok == nil)
+	ctx.default_font = font_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32, 32)
+
 	width, height, channels: i32
 	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 4)
+
 	//TODO: We seem to lose the texture data when we load like this over here I think
-	ctx.default_font = font_load(data[:width * height], int(height), int(width), 32, 32)
+	ctx.default_font = font_load(data[:height * width], int(height), int(width), 32, 32)
 
 	white_rect: []u8 = make_slice([]u8, 1024) //TODO: This might need to be an arena or something
 	slice.fill(white_rect, 255)
