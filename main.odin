@@ -140,21 +140,17 @@ run :: proc() {
 	mouse_entity.collider.kind = .RECT
 	mouse_entity.collider.radius = 4.0
 
-
-
 	//TODO: Decide how we want to handle storing textures
 	//Can be:
 	//a static array     (entity holds id), 
 	//an arena allocator (entity holds pointer to texture), 
 	percy_image, image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
 	percy_texture := rducc.sprite_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width)
-	percy_texture_atlas := rducc.sprite_atlas_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width, 16)
 
 
 	//TODO:This does not load the generated font correctly (maybe see karl2d for ttf loading)
 	font_image, font_image_ok := image.load_from_bytes(#load("res/Font3.bmp"))
 	assert(font_image_ok == nil)
-	rducc.ctx.default_font = rducc.font_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32, 32)
 	my_font := rducc.sprite_atlas_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32)
 
 
@@ -162,7 +158,7 @@ run :: proc() {
 	stbi.set_flip_vertically_on_load(1)
 	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 4)
 	my_font2 := rducc.font_load(data[:width * height], int(height), int(width), 32, 32)
-	/* debug.debug_print_pixels(my_font2.data, int(my_font2.height), int(my_font2.width)) */
+	rducc.ctx.default_font = rducc.font_load(data[:width * height], int(height), int(width), 32, 32)
 
 	percy_entity: Entity
 	percy_entity.texture = &percy_texture
@@ -222,23 +218,10 @@ run :: proc() {
 		rducc.background_clear(rducc.GRAY)
 		/* rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED) */
 		/* rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16) */
-		rducc.draw_text(my_font2, "Hello", {600.0, 500.0}, 16)
 		rducc.draw_text(rducc.ctx.default_font, "Hello", {400.0, 500.0}, 16)
-		rducc.draw_sprite_atlas(
-			my_font,
-			{600.0, 500.0, 0.0},
-			{16.0,16.0},
-			{4,4}
-		)
 		/* rducc.draw_circle({200.0,200.0,0.0}, {32.0, 32.0}, colour = rducc.RED) */
 		/* rducc.draw_box({100.0,100.0,0.0}, {32.0, 32.0}) */
-		rducc.draw_sprite(percy_entity.texture^, percy_entity.pos, percy_entity.scale)
-		rducc.draw_sprite_atlas(
-			percy_texture_atlas,
-			{650.0, 550.0, 0.0},
-			percy_entity.scale,
-			{0,0}
-		)
+		rducc.draw_sprite(percy_texture, percy_entity.pos, percy_entity.scale)
 		rducc.commit()
 
 		//TC: CLEANUP
