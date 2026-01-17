@@ -5,6 +5,7 @@ import "core:image/png"
 import "core:image/bmp"
 import fs "vendor:fontstash"
 import stbi "vendor:stb/image"
+import tty "vendor:stb/truetype"
 import "debug"
 
 import "core:time"
@@ -52,7 +53,7 @@ Entity :: struct {
 	id:         i32,
 	kind:       Entity_Kind,
 	texture:    ^rducc.Ducc_Texture,
-	pos:        [3]f32,
+	pos:        [2]f32,
 	curr_cell:  [2]u32,
 	rotation:   f32,
 	scale:      [2]f32,
@@ -120,7 +121,7 @@ game_context_init :: proc() -> Game_Context{
 	return ctx
 }
 
-pos_to_cell :: proc(pos: [3]f32) -> [2]u32 {
+pos_to_cell :: proc(pos: [2]f32) -> [2]u32 {
 	return {u32(math.round_f32(pos.x/SPRITE_SCALE.x)), u32(math.round_f32(pos.y/SPRITE_SCALE.y))}
 }
 
@@ -157,13 +158,18 @@ run :: proc() {
 	width, height, channels: i32
 	stbi.set_flip_vertically_on_load(1)
 	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 4)
+	for idx := 0; idx < int(4*(width *height)); idx += 4 {
+		if data[idx] == 0 {
+			data[idx + 3] = 0
+		}
+	}
 	my_font2 := rducc.font_load(data[:width * height], int(height), int(width), 32, 32)
 	rducc.ctx.default_font = rducc.font_load(data[:width * height], int(height), int(width), 32, 32)
 
 	percy_entity: Entity
 	percy_entity.texture = &percy_texture
 	percy_entity.scale = SPRITE_SCALE
-	percy_entity.pos = {150.0, 150.0, 1.0}
+	percy_entity.pos = {150.0, 150.0}
 	percy_entity.id = 0
 	percy_entity.collider = {}
 	percy_entity.collider.scale = {4.0, 4.0}
@@ -199,7 +205,7 @@ run :: proc() {
 		}
 
 		// TC: PHYSICS
-		mouse_entity.pos = {m_pos.x - 2, m_pos.y - 2, 0.0}
+		mouse_entity.pos = {m_pos.x - 2, m_pos.y - 2}
 		mouse_entity.collider.origin = {m_pos.x - 2, m_pos.y - 2}
 		
 		//TC: Assign Grid Cells
@@ -216,11 +222,9 @@ run :: proc() {
 
 		//TC: RENDER
 		rducc.background_clear(rducc.GRAY)
-		/* rducc.draw_circle({m_pos.x, m_pos.y, 0.0}, {4.0,4.0}, colour = rducc.RED) */
-		/* rducc.draw_text(rducc.ctx.default_font, "Hello World!", {600.0, 500.0}, 16) */
 		rducc.draw_text(rducc.ctx.default_font, "Hello", {400.0, 500.0}, 16)
-		/* rducc.draw_circle({200.0,200.0,0.0}, {32.0, 32.0}, colour = rducc.RED) */
-		/* rducc.draw_box({100.0,100.0,0.0}, {32.0, 32.0}) */
+		rducc.draw_box({400.0, 40.0}, {32.0, 32.0}, colour = rducc.BLUE)
+		rducc.draw_circle({120.0, 200.0}, {32.0, 16.0}, colour = rducc.RED)
 		rducc.draw_sprite(percy_texture, percy_entity.pos, percy_entity.scale)
 		rducc.commit()
 
@@ -276,7 +280,7 @@ widget_button :: proc(text: string, button_pos, button_size, mouse_pos: [2]f32, 
 	}
 
 	rducc.draw_text(rducc.ctx.default_font, text, _pos, 16, rducc.WHITE)
-	rducc.draw_box({_pos.x, _pos.y, 0.0}, button_size, colour = colour)
+	rducc.draw_box({_pos.x, _pos.y}, button_size, colour = colour)
 
 	return clicked
 }

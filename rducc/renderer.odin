@@ -211,7 +211,7 @@ pixel :: proc(pos: [3]f32, colour: Colour) {
 	gl.DrawArrays(gl.POINTS, 0, len(vertices))
 }
 
-draw_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+draw_box :: proc(pos: [2]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	texture := ctx.shape_texture_empty
 	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
@@ -219,7 +219,12 @@ draw_box :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK
 
 	ctx.loaded_texture = texture
 
-	push_vertices(pos, scale, colour)
+	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0}, {1.0, 0.0}, colour)
+	push_vertex({pos.x + scale.x, pos.y, 0.0},           {1.0, 1.0}, colour)
+	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour)
+	push_vertex({pos.x + scale.x, pos.y, 0.0},           {1.0, 1.0}, colour)
+	push_vertex({pos.x, pos.y, 0.0},                     {0.0, 1.0}, colour)
+	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour)
 }
 
 draw_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
@@ -249,7 +254,7 @@ draw_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour :
 	ctx.active_render_group.box_vertices += len(vertices_index_box)
 }
 
-draw_circle :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+draw_circle :: proc(pos: [2]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	texture := ctx.shape_texture_empty
 	if (ctx.loaded_texture.hndl <= 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
@@ -257,7 +262,7 @@ draw_circle :: proc(pos: [3]f32, radius: [2]f32, rotation: f32 = 0.0, colour := 
 
 	ctx.loaded_texture = texture
 
-	push_vertices(pos, radius, colour, is_circle = true)
+	push_vertices(pos.xyy, radius, colour, is_circle = true)
 }
 
 sprite_atlas_load :: proc(data: []u8, height, width:int, sprite_size: i32) -> Ducc_Texture_Atlas {
@@ -282,7 +287,7 @@ sprite_atlas_load :: proc(data: []u8, height, width:int, sprite_size: i32) -> Du
 
 //Takes in position data, texture data to be drawn, and index into the atlas from top down
 //i.e 0,0 will be top left. atlas.rows - 1, atlas.cols - 1 will be bottom right
-draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [3]f32, scale: [2]f32, idx: [2]i32, rotation: f32 = 0.0, colour := RED) {
+draw_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, idx: [2]i32, rotation: f32 = 0.0, colour := WHITE) {
 	if (ctx.loaded_texture.hndl != 0 && atlas.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
@@ -404,13 +409,29 @@ sprite_load :: proc(data: []u8, height, width: int)  -> Ducc_Texture {
 }
 
 //Takes in position data, and texture data to be drawn
-draw_sprite :: proc(texture: Ducc_Texture, pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
+draw_sprite :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
 	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
 
 	ctx.loaded_texture = texture
-	push_vertices(pos, scale, colour)
+	push_vertices(pos.xyy, scale, colour)
+}
+
+push_vertex :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, is_circle := false) {
+	vertex: Vertex
+	vertex.pos_coords = pos_coords
+	vertex.texture_coords = uv_coords
+	vertex.colour = colour_apply(colour)
+	vertex.is_circle = f32(int(is_circle))
+
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		int(ctx.batch_vertices_count) * size_of(Vertex),
+		size_of(Vertex),
+		&vertex,
+	)
+	ctx.batch_vertices_count += 1
 }
 
 push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour, is_circle := false) {
@@ -428,11 +449,6 @@ push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour, is_circle := f
 		vert.dummy_pos = vertices_index_box[i].pos_coords
 	}
 
-	/* for vert in vertices {
-		ctx.batch_vertices[ctx.batch_vertices_count] = vert
-		ctx.batch_vertices_count += 1
-	} */
-
 	//TODO: Instead of using subData here we can store all vertex info on the CPU in Context then pass that to the gpu in @commit()
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
@@ -443,7 +459,6 @@ push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour, is_circle := f
 	ctx.batch_vertices_count += len(vertices)
 }
 
-//push_vertex :: proc(pos_coord, texture_coord, colour, is_circle := false)
 
 font_load :: proc(font_data: []u8, height, width: int, offset: i32, sprite_size: i32) -> Ducc_Font {
 	return font_bmp_load(font_data, height, width, offset, sprite_size)
@@ -482,10 +497,10 @@ draw_text :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size: f32, co
 	upper_text := strings.to_upper(text, context.temp_allocator)
 	for c, i in upper_text {
 		offset_c := i32(c) - font.offset //offset our character so it can be indexed into the array
-		idx_y    := offset_c / 8 //find the row in our atlas from top to bottom
+		idx_y    := offset_c / font.rows //find the row in our atlas from top to bottom
 		adj_cols := ((font.cols) * i32(idx_y)) //find the starting point for the row in our imaginary flat array
 		normalized_offset := (i32(offset_c) - adj_cols) //normalize our char index to be 0 to (cols- 1) so we can index into the row
-		draw_sprite_atlas(texture, {pos.x + f32((i32(i) * i32(font_size))), pos.y, 0.0}, {font_size, font_size}, {i32(normalized_offset), i32(idx_y)}, colour = colour)
+		draw_sprite_atlas(texture, {pos.x + f32((i32(i) * i32(font_size))), pos.y}, {font_size, font_size}, {i32(normalized_offset), i32(idx_y)}, colour = colour)
 	}
 }
 
@@ -518,12 +533,6 @@ commit :: proc() {
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.height, ctx.loaded_texture.width, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
 	vertex_attrib_apply()
 	gl.GenerateMipmap(gl.TEXTURE_2D)
-	if window_is_key_pressed(.KEY_A) {
-		for i in 0..<ctx.batch_vertices_count {
-			fmt.println(ctx.batch_vertices[i])
-	}
-		fmt.println()
-	}
 	/* blah := ctx.batch_vertices[:ctx.batch_vertices_count]
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
