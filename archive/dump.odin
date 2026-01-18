@@ -71,4 +71,68 @@ cell_slots :: proc() {
 				}
 			}
 		}
+
+		//TC: Assign Grid Cells
+		for idx in 0..< game_ctx.entity_count {
+			entity := &game_ctx.entities[idx]
+			cell_pos := pos_to_cell(entity.pos)
+			curr_pos := entity.curr_cell
+			col := cell_pos.x
+			row := cell_pos.y
+			game_ctx.grid[curr_pos.y][curr_pos.x].occupiers[0] = -1
+			game_ctx.grid[row][col].occupiers[0] = entity.id
+			entity.curr_cell = {col, row}
+		}
+}
+
+
+/*
+RELATIVE = percentage relative to window size
+ABSOLUTTE = x,y as is
+*/
+Position_Kind :: enum {
+	RELATIVE,
+	ABSOLUTE,
+}
+/*
+RELATIVE = percentage relative to window size
+ABSOLUTTE = x,y as is
+*/
+widget_button :: proc(text: string, button_pos, button_size, mouse_pos: [2]f32, pos_kind: Position_Kind) -> bool {
+	h := hash.ginger16(transmute([]byte)text)
+	clicked := false
+	_pos := button_pos
+	switch pos_kind {
+	case .RELATIVE:
+		assert(button_pos.x <= 100 && button_pos.y <= 100)
+		assert(button_pos.x >= 0 && button_pos.y >= 0)
+		_pos.x = f32(rducc.ctx.window_width)  * (button_pos.x * 0.01) - button_size.x
+		_pos.y = f32(rducc.ctx.window_height) * (button_pos.y * 0.01) - button_size.y
+	case .ABSOLUTE:
+	}
+	mouse_collider: pducc.Collider 
+	mouse_collider = {}
+	mouse_collider.scale = {4.0, 4.0}
+	mouse_collider.kind = .RECT
+	mouse_collider.origin = mouse_pos
+
+	button_collider: pducc.Collider = {}
+	button_collider.origin = _pos
+	button_collider.scale = button_size
+	button_collider.kind = .RECT
+	colour := rducc.BLUE
+
+	if pducc.rect_collision(mouse_collider, button_collider) {
+		hot_widget = i32(h)
+		colour = rducc.GREEN
+		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
+			active_widget = i32(h)
+			clicked = true
+		}
+	}
+
+	rducc.draw_text(rducc.ctx.default_font, text, _pos, 16, rducc.WHITE)
+	rducc.draw_box({_pos.x, _pos.y}, button_size, colour = colour)
+
+	return clicked
 }

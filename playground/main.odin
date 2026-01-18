@@ -124,13 +124,6 @@ draw_font :: proc(font: Font_Thing, text: string, pos: [2]f32, font_size: f32) {
 	rducc.push_vertex({quad.x1, quad.y0, 0.0}, {quad.s1, quad.t1}, rducc.WHITE)
 	rducc.push_vertex({quad.x0, quad.y0, 0.0}, {quad.s0, quad.t1}, rducc.WHITE)
 	rducc.push_vertex({quad.x0, quad.y1, 0.0}, {quad.s0, quad.t0}, rducc.WHITE)
-
-	/* rducc.push_vertex({quad.x1, quad.y1, 0.0}, {1, 0}, rducc.WHITE)
-	rducc.push_vertex({quad.x1, quad.y1, 0.0}, {1, 1}, rducc.WHITE)
-	rducc.push_vertex({quad.x1, quad.y1, 0.0}, {0, 0}, rducc.WHITE)
-	rducc.push_vertex({quad.x1, quad.y1, 0.0}, {1, 1}, rducc.WHITE)
-	rducc.push_vertex({quad.x1, quad.y1, 0.0}, {0, 1}, rducc.WHITE)
-	rducc.push_vertex({quad.x1, quad.y1, 0.0}, {0, 0}, rducc.WHITE) */
 }
 
 draw_text :: proc(font_ctx: ^fs.FontContext, pos: [2]f32, font_size: f32) {
@@ -155,13 +148,6 @@ draw_text :: proc(font_ctx: ^fs.FontContext, pos: [2]f32, font_size: f32) {
 		rducc.push_vertex({quad.x1, quad.y0, 0.0}, {quad.s1, quad.t1}, rducc.WHITE)
 		rducc.push_vertex({quad.x0, quad.y0, 0.0}, {quad.s0, quad.t1}, rducc.WHITE)
 		rducc.push_vertex({quad.x0, quad.y1, 0.0}, {quad.s0, quad.t0}, rducc.WHITE)
-
-		/* rducc.push_vertex({quad.x1, quad.y1, 0.0}, {1, 0}, rducc.WHITE)
-		rducc.push_vertex({quad.x1, quad.y1, 0.0}, {1, 1}, rducc.WHITE)
-		rducc.push_vertex({quad.x1, quad.y1, 0.0}, {0, 0}, rducc.WHITE)
-		rducc.push_vertex({quad.x1, quad.y1, 0.0}, {1, 1}, rducc.WHITE)
-		rducc.push_vertex({quad.x1, quad.y1, 0.0}, {0, 1}, rducc.WHITE)
-		rducc.push_vertex({quad.x1, quad.y1, 0.0}, {0, 0}, rducc.WHITE) */
 	}
 
 	/* w, h, xoff, yoff: i32
