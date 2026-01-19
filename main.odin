@@ -46,32 +46,11 @@ main :: proc() {
 
 
 run :: proc() {
-	rducc.window_open(980,620,"RDUCC DEMO")
-	rducc.init()
-	r_group1 := rducc.render_group_create()
+	rducc.init(980,620,"RDUCC DEMO")
 	curr_rotation: f32 = 0.
 
 	percy_image, percy_image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
 	percy_texture := rducc.sprite_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width)
-
-
-	//TODO:This does not load the generated font correctly (maybe see karl2d for ttf loading)
-	font_image, font_image_ok := image.load_from_bytes(#load("res/Font3.bmp"))
-	assert(font_image_ok == nil)
-	my_font := rducc.sprite_atlas_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32)
-
-
-	//TODO: This needs to be moved to renderer init
-	width, height, channels: i32
-	stbi.set_flip_vertically_on_load(1)
-	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 4)
-	for idx := 0; idx < int(4*(width *height)); idx += 4 {
-		if data[idx] == 0 {
-			data[idx + 3] = 0
-		}
-	}
-	my_font2 := rducc.font_load(data[:width * height], int(height), int(width), 32, 32)
-	rducc.ctx.default_font = rducc.font_load(data[:width * height], int(height), int(width), 32, 32)
 
 	m_pos_change := [2]f32{0.0, 0.0}
 	prev_m_pos := rducc.window_mouse_pos()
@@ -101,8 +80,8 @@ run :: proc() {
 		//TC: RENDER
 		rducc.background_clear(rducc.GRAY)
 		rducc.draw_box({400.0, 500.0}, {64.0, 32.0}, colour = rducc.BLUE)
+		rducc.draw_text("Hello", {400.0, 500.0}, 32)
 		rducc.draw_circle({120.0, 200.0}, {32.0, 16.0}, colour = rducc.RED)
-		rducc.draw_text(my_font2, "Hello", {400.0, 500.0}, 32)
 		rducc.draw_sprite(percy_texture, {150, 150}, {32, 32})
 		rducc.commit()
 

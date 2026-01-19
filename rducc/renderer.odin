@@ -93,7 +93,8 @@ Vertex :: struct {
 	dummy_pos:     [3]f32,
 }
 
-init :: proc() {
+init :: proc(window_width, window_height: i32, name: cstring) {
+	window_open(window_width, window_height, name)
 	gl.load_up_to(4, 6, glfw.gl_set_proc_address) //required for proc address stuff
 	gl.Viewport(0, 0, ctx.window_width, ctx.window_height)
 	gl.Enable(gl.DEBUG_OUTPUT)
@@ -110,41 +111,32 @@ init :: proc() {
 
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	ctx.indices = make_slice([]u32, 6)
-	ctx.indices[0] = 0
-	ctx.indices[1] = 1
-	ctx.indices[2] = 3
-	ctx.indices[3] = 1
-	ctx.indices[4] = 2
-	ctx.indices[5] = 3
 
-	gl.GenBuffers(1, &ctx.active_vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, DEFAULT_BUFF_SIZE, nil, gl.DYNAMIC_DRAW)
 	gl.GenVertexArrays(1, &ctx.active_vao)
-
 	gl.BindVertexArray(ctx.active_vao)
 	gl.EnableVertexAttribArray(0)
 	gl.EnableVertexAttribArray(1)
 	gl.EnableVertexAttribArray(2)
 	gl.EnableVertexAttribArray(3)
 	gl.EnableVertexAttribArray(4)
-
 	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
 	gl.EnableVertexAttribArray(5)
 
-
 	shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
 
-	font_image, font_image_ok := image.load_from_bytes(#load("../res/Font3.bmp"))
+	/* font_image, font_image_ok := image.load_from_bytes(#load("../res/Font3.bmp"))
 	assert(font_image_ok == nil)
-	ctx.default_font = font_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32, 32)
+	ctx.default_font = font_load(font_image.pixels.buf[:], font_image.height, font_image.width, 32, 32) */
 
 	width, height, channels: i32
+	stbi.set_flip_vertically_on_load(1)
 	data := stbi.load("res/Font3.bmp", &width, &height, &channels, 4)
-
-	//TODO: We seem to lose the texture data when we load like this over here I think
-	ctx.default_font = font_load(data[:height * width], int(height), int(width), 32, 32)
+	for idx := 0; idx < int(4*(width *height)); idx += 4 {
+		if data[idx] == 0 {
+			data[idx + 3] = 0
+		}
+	}
+	ctx.default_font = font_load(data[:(height * width)], int(height), int(width), 32, 32)
 
 	white_rect: []u8 = make_slice([]u8, 1024) //TODO: This might need to be an arena or something
 	slice.fill(white_rect, 255)
@@ -256,7 +248,7 @@ draw_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour :
 
 draw_circle :: proc(pos: [2]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	texture := ctx.shape_texture_empty
-	if (ctx.loaded_texture.hndl <= 0 && texture.hndl != ctx.loaded_texture.hndl) {
+	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
 
@@ -484,7 +476,7 @@ font_bmp_load :: proc(font_data: []u8, height, width: int, offset: i32, sprite_s
 take in a loaded font, line of text, position, font_size, and colour
 currently maps the font to a texture atlas and calls the renderer's texture atlas draw proc
 */
-draw_text :: proc(font: Ducc_Font, text: string, pos: [2]f32, font_size: f32, colour: Colour = WHITE) {
+draw_text :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
 	texture: Ducc_Texture_Atlas = {
 		hndl = font.hndl,
 		data = font.data,
