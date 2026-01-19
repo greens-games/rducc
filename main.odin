@@ -6,6 +6,7 @@ import "core:image/bmp"
 import fs "vendor:fontstash"
 import stbi "vendor:stb/image"
 import tty "vendor:stb/truetype"
+import "vendor:box2d"
 import "debug"
 
 import "core:time"
@@ -17,6 +18,20 @@ import "core:fmt"
 import "core:math"
 import "core:mem"
 import "core:os"
+
+/**
+Table of Contents:
+	CLEANUP
+	RENDER
+	PHYSICS
+	INIT
+*/
+
+Game_State :: enum {
+	PLAYING,
+	MENU,
+	PAUSED,
+}
 
 main :: proc() {
 	when ODIN_DEBUG {
