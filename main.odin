@@ -6,6 +6,7 @@ import "core:image/bmp"
 import "core:fmt"
 import "core:math"
 import "core:mem"
+import "core:mem/virtual"
 import "core:os"
 
 import fs "vendor:fontstash"
@@ -29,6 +30,12 @@ Game_State :: enum {
 	PLAYING,
 	MENU,
 	PAUSED,
+}
+
+Entity :: struct {
+	pos:      [2]f32,
+	scale:    [2]f32,
+	collider: pducc.Collider,
 }
 
 main :: proc() {
@@ -64,6 +71,15 @@ run :: proc() {
 
 	percy_image, percy_image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
 	percy_texture := rducc.sprite_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width)
+	percy_pos := [2]f32{150, 150}
+	percy_scale := [2]f32{32, 32}
+
+	game_frame_arena: virtual.Arena 
+	arena_err := virtual.arena_init_static(&game_frame_arena)
+	assert(arena_err == nil)
+	game_frame_arena_allocator := virtual.arena_allocator(&game_frame_arena)
+
+	bullets := make_slice([]Entity, 100, game_frame_arena_allocator)
 
 	m_pos_change := [2]f32{0.0, 0.0}
 	prev_m_pos := rducc.window_mouse_pos()
@@ -77,9 +93,28 @@ run :: proc() {
 		dt := rducc.time_delta_get()
 
 		//TC: INPUT
-		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
-			fmt.println("M_POS_CHANGE: ", m_pos_change)
+		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) {
+			m_collider: pducc.Collider
+			m_collider.kind = .RECT
+			m_collider.origin = m_pos
+			m_collider.scale = [2]f32{10, 10}
+			percy_collider: pducc.Collider
+			percy_collider.kind = .RECT
+			percy_collider.origin = percy_pos
+			percy_collider.scale = percy_scale
+			if pducc.rect_collision(m_collider, percy_collider) {
+				//TODO: This can sometimes stop being detected when moving too fast
+				percy_pos += m_pos_change
+			}
 		}
+
+		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
+			{
+				bullet: Entity
+				bullet.pos = [2]f32{percy_pos.x, percy_pos.y + 10}
+			}
+		}
+
 		if rducc.window_is_key_pressed(.KEY_Q) {
 		}
 
@@ -95,7 +130,8 @@ run :: proc() {
 		rducc.draw_box({400.0, 500.0}, {64.0, 32.0}, colour = rducc.BLUE)
 		rducc.draw_text("Hello", {400.0, 500.0}, 32)
 		rducc.draw_circle({120.0, 200.0}, {32.0, 16.0}, colour = rducc.RED)
-		rducc.draw_sprite(percy_texture, {150, 150}, {32, 32})
+		rducc.draw_circle(bullet.pos, {16, 16})
+		rducc.draw_sprite(percy_texture, percy_pos, percy_scale)
 		rducc.commit()
 
 		//TC: CLEANUP
