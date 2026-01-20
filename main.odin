@@ -3,21 +3,19 @@ package main
 import "core:image"
 import "core:image/png"
 import "core:image/bmp"
-import fs "vendor:fontstash"
-import stbi "vendor:stb/image"
-import tty "vendor:stb/truetype"
-import "vendor:box2d"
-import "debug"
-
-import "core:time"
-import "core:hash"
-import "rducc"
-import "pducc"
-
 import "core:fmt"
 import "core:math"
 import "core:mem"
 import "core:os"
+
+import fs "vendor:fontstash"
+import stbi "vendor:stb/image"
+import tty "vendor:stb/truetype"
+
+import "debug"
+import "rducc"
+import "pducc"
+
 
 /**
 Table of Contents:
