@@ -26,14 +26,15 @@ rect_collision :: proc(a, b: Collider) -> bool {
 }
 
 circle_collision :: proc(a, b: Collider) -> bool {
-	assert(a.kind == .CIRCLE && a.kind == .CIRCLE, "A and B must both be Circle Colliders")
+	assert(a.kind == .CIRCLE && b.kind == .CIRCLE, "A and B must both be Circle Colliders")
 	dist_x := a.origin.x - b.origin.x
 	dist_y := a.origin.y - b.origin.y
 	dist := math.sqrt((dist_x * dist_x) + (dist_y * dist_y))
-	return dist <= (a.radius + b.radius)
+	return dist <= (1.0)
 }
 
-circle_rect_collision :: proc(a, b: Collider) -> bool {
+circle_rect_collision :: proc(rect, circle: Collider) -> bool {
+	assert(rect.kind == .RECT && circle.kind == .CIRCLE, "First arg must be RECT Collider and second arg must both be CIRCLE Collider")
 
 	return false
 }

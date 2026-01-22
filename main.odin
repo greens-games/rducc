@@ -20,6 +20,7 @@ import "pducc"
 
 /**
 Table of Contents:
+	RESET
 	CLEANUP
 	RENDER
 	PHYSICS
@@ -33,9 +34,10 @@ Game_State :: enum {
 }
 
 Entity :: struct {
-	pos:      [2]f32,
-	scale:    [2]f32,
-	collider: pducc.Collider,
+	pos:       [2]f32,
+	scale:     [2]f32,
+	collider:  pducc.Collider,
+	direction: i8,
 }
 
 main :: proc() {
@@ -68,21 +70,38 @@ main :: proc() {
 run :: proc() {
 	rducc.init(980,620,"RDUCC DEMO")
 	curr_rotation: f32 = 0.
+	debug_mode := false
 
 	percy_image, percy_image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
 	percy_texture := rducc.sprite_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width)
 	percy_pos := [2]f32{150, 150}
 	percy_scale := [2]f32{32, 32}
 
+	enemy_image, enemy_image_ok := image.load_from_bytes(#load("res/player_filled.png"))
+	enemy_texture := rducc.sprite_load(enemy_image.pixels.buf[:], enemy_image.height, enemy_image.width)
+	enemy_pos := [2]f32{185, 150}
+	enemy_scale := [2]f32{32, 32}
+	enemy_collider := pducc.Collider {
+		kind   = .CIRCLE,
+		origin = enemy_pos,
+		scale  = enemy_scale,
+		radius = enemy_scale.x,
+	}
+
 	game_frame_arena: virtual.Arena 
 	arena_err := virtual.arena_init_static(&game_frame_arena)
 	assert(arena_err == nil)
 	game_frame_arena_allocator := virtual.arena_allocator(&game_frame_arena)
 
-	bullets := make_slice([]Entity, 100, game_frame_arena_allocator)
+	bullet_cap := 100
+	bullets := make_slice([]Entity, bullet_cap, game_frame_arena_allocator)
+	bullet_count := 0
 
 	m_pos_change := [2]f32{0.0, 0.0}
 	prev_m_pos := rducc.window_mouse_pos()
+
+	velocity: [2]f32
+	direction: i8 = 1
 
 	r_group2 := rducc.render_group_create()
 	for !rducc.window_close() {
@@ -90,7 +109,7 @@ run :: proc() {
 		m_pos := rducc.window_mouse_pos()
 		m_pos_change = m_pos - prev_m_pos
 
-		dt := rducc.time_delta_get()
+		dt := f32(rducc.time_delta_get())
 
 		//TC: INPUT
 		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) {
@@ -108,14 +127,39 @@ run :: proc() {
 			}
 		}
 
-		if rducc.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
-			{
-				bullet: Entity
-				bullet.pos = [2]f32{percy_pos.x, percy_pos.y + 10}
-			}
+		if rducc.window_is_key_pressed(.KEY_GRAVE_ACCENT) {
+			debug_mode = !debug_mode
 		}
 
 		if rducc.window_is_key_pressed(.KEY_Q) {
+			{
+				bullet: Entity
+				start_pos := f32(10 * direction) * f32((direction > 0) ? 2.5 : 1.5)
+				bullet.pos = [2]f32{percy_pos.x  + start_pos, percy_pos.y + percy_scale.y/2}
+				bullet.scale = [2]f32{16, 16}
+				bullet.direction = direction
+				collider: pducc.Collider
+				collider.scale = bullet.scale
+				collider.origin = bullet.pos
+				collider.kind = .CIRCLE
+				collider.radius = bullet.scale.x
+				bullet.collider = collider
+				if bullet_count >= bullet_cap {
+					bullet_count = 0
+				}
+				bullets[bullet_count] = bullet
+				bullet_count += 1
+			}
+		}
+
+		if rducc.window_is_key_down(.KEY_D) {
+			velocity.x += (250 * f32(dt))
+			direction = 1
+		}
+
+		if rducc.window_is_key_down(.KEY_A) {
+			velocity.x -= (250 * f32(dt))
+			direction = -1
 		}
 
 		if rducc.window_is_key_pressed(.KEY_R) {
@@ -124,18 +168,42 @@ run :: proc() {
 		}
 
 		// TC: PHYSICS
+		percy_pos += velocity
+		for idx in 0..<bullet_count {
+			b := &bullets[idx]
+			b_velocity := (300 * dt * f32(b.direction))
+			if pducc.circle_collision(b.collider, enemy_collider) {
+				b_velocity = 0.0
+			}
+			b.pos.x = clamp(b.pos.x + b_velocity,
+							0.0,
+							f32(rducc.window_width()) - b.scale.x)
+			b.collider.origin = b.pos
+		}
 		
 		//TC: RENDER
 		rducc.background_clear(rducc.GRAY)
 		rducc.draw_box({400.0, 500.0}, {64.0, 32.0}, colour = rducc.BLUE)
 		rducc.draw_text("Hello", {400.0, 500.0}, 32)
-		rducc.draw_circle({120.0, 200.0}, {32.0, 16.0}, colour = rducc.RED)
-		rducc.draw_circle(bullet.pos, {16, 16})
+		rducc.draw_circle({120.0, 232.0}, {32.0, 16.0}, colour = rducc.RED)
+		for idx in 0..<bullet_count {
+			b := bullets[idx]
+			rducc.draw_circle(b.pos, b.scale)
+		}
 		rducc.draw_sprite(percy_texture, percy_pos, percy_scale)
+		rducc.draw_sprite(enemy_texture, enemy_pos, enemy_scale)
+
+		if debug_mode {
+
+		}
+
 		rducc.commit()
 
 		//TC: CLEANUP
 		free_all()
 		prev_m_pos = m_pos
+
+		//TC: RESET
+		velocity = {}
 	}
 }

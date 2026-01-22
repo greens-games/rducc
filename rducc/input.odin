@@ -16,7 +16,7 @@ Key :: enum {
 	KEY_LEFT_BRACKET  = 91,
 	KEY_BACKSLASH     = 92,
 	KEY_RIGHT_BRACKET = 93,
-	KEY_GRAVE_ACCENT  = 96,
+	KEY_GRAVE_ACCENT  = 96, // `
 	KEY_WORLD_1       = 16,
 	KEY_WORLD_2       = 16,
 	/* Alphanumeric characters */

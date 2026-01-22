@@ -1,7 +1,6 @@
 package rducc
 
 import "core:slice/heap"
-import "../debug"
 
 import "core:hash"
 import "core:image"
@@ -247,6 +246,17 @@ draw_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour :
 }
 
 draw_circle :: proc(pos: [2]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+	texture := ctx.shape_texture_empty
+	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
+		commit()
+	}
+
+	ctx.loaded_texture = texture
+
+	push_vertices(pos.xyy, radius, colour, is_circle = true)
+}
+
+draw_circle_outline :: proc(pos: [2]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
 	texture := ctx.shape_texture_empty
 	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()

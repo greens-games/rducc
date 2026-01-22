@@ -1,6 +1,7 @@
 package debug
 
 import "core:fmt"
+import "../rducc"
 
 debug_print_pixels :: proc(data: []u8, height, width: int) {
 	pixel_count := 0
@@ -16,4 +17,8 @@ debug_print_pixels :: proc(data: []u8, height, width: int) {
 			fmt.println()
 		}
 	}
+}
+
+debug_entity_box :: proc($E: typeid, data: rawptr) {
+	fmt.printfln("Entity: %v", (cast(^E)data)^
 }
