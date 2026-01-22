@@ -27,7 +27,7 @@ import glm "core:math/linalg/glsl"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
 
-Colour :: distinct [4]int
+Colour :: [4]int
 //NOTE: These are ripped straight from Raylib could probably do something else if we wanted
 LIGHTGRAY :: Colour{200, 200, 200, 255} // Light Gray
 GRAY :: Colour{130, 130, 130, 255} // Gray

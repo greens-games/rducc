@@ -3,15 +3,9 @@ package main
 import "core:image"
 import "core:image/png"
 import "core:image/bmp"
-import "core:fmt"
-import "core:math"
 import "core:mem"
 import "core:mem/virtual"
-import "core:os"
-
-import fs "vendor:fontstash"
-import stbi "vendor:stb/image"
-import tty "vendor:stb/truetype"
+import "core:fmt"
 
 import "debug"
 import "rducc"
@@ -38,6 +32,7 @@ Entity :: struct {
 	scale:     [2]f32,
 	collider:  pducc.Collider,
 	direction: i8,
+	texture_hndl: i32,
 }
 
 main :: proc() {
@@ -71,25 +66,43 @@ run :: proc() {
 	rducc.init(980,620,"RDUCC DEMO")
 	curr_rotation: f32 = 0.
 	debug_mode := false
+	game_state: Game_State
+	
+	game_perm_arena: virtual.Arena 
+	arena_err := virtual.arena_init_static(&game_perm_arena)
+	assert(arena_err == nil)
+	game_perm_arena_allocator := virtual.arena_allocator(&game_perm_arena)
+
+	loaded_textures := make_dynamic_array([dynamic]rducc.Ducc_Texture, game_perm_arena_allocator)
 
 	percy_image, percy_image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
 	percy_texture := rducc.sprite_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width)
-	percy_pos := [2]f32{150, 150}
-	percy_scale := [2]f32{32, 32}
+	append(&loaded_textures, percy_texture)
+	percy_entity := Entity {
+		pos =   {150, 150},
+		scale = {32, 32},
+		texture_hndl = i32(len(loaded_textures) - 1),
+		direction = 1,
+	}
 
 	enemy_image, enemy_image_ok := image.load_from_bytes(#load("res/player_filled.png"))
 	enemy_texture := rducc.sprite_load(enemy_image.pixels.buf[:], enemy_image.height, enemy_image.width)
-	enemy_pos := [2]f32{185, 150}
-	enemy_scale := [2]f32{32, 32}
-	enemy_collider := pducc.Collider {
-		kind   = .CIRCLE,
-		origin = enemy_pos,
-		scale  = enemy_scale,
-		radius = enemy_scale.x,
+	append(&loaded_textures, enemy_texture)
+	enemy_entity := Entity {
+		pos       = [2]f32{185, 150},
+		scale     = [2]f32{32, 32},
 	}
 
+	collider  := pducc.Collider {
+		kind   = .CIRCLE,
+		origin = enemy_entity.pos,
+		scale  = enemy_entity.scale,
+		radius = enemy_entity.scale.x,
+	}
+	enemy_entity.collider = collider
+
 	game_frame_arena: virtual.Arena 
-	arena_err := virtual.arena_init_static(&game_frame_arena)
+	arena_err = virtual.arena_init_static(&game_frame_arena)
 	assert(arena_err == nil)
 	game_frame_arena_allocator := virtual.arena_allocator(&game_frame_arena)
 
@@ -105,6 +118,13 @@ run :: proc() {
 
 	r_group2 := rducc.render_group_create()
 	for !rducc.window_close() {
+		//TODO: Get some actual menu and pausing stuff going
+		if rducc.window_is_key_pressed(.KEY_P) {
+			game_state = .PLAYING
+		}
+		if game_state == .PAUSED {
+			continue
+		}
 		//TC: INIT
 		m_pos := rducc.window_mouse_pos()
 		m_pos_change = m_pos - prev_m_pos
@@ -119,11 +139,11 @@ run :: proc() {
 			m_collider.scale = [2]f32{10, 10}
 			percy_collider: pducc.Collider
 			percy_collider.kind = .RECT
-			percy_collider.origin = percy_pos
-			percy_collider.scale = percy_scale
+			percy_collider.origin = percy_entity.pos
+			percy_collider.scale = percy_entity.scale
 			if pducc.rect_collision(m_collider, percy_collider) {
 				//TODO: This can sometimes stop being detected when moving too fast
-				percy_pos += m_pos_change
+				percy_entity.pos += m_pos_change
 			}
 		}
 
@@ -131,11 +151,16 @@ run :: proc() {
 			debug_mode = !debug_mode
 		}
 
+		if rducc.window_is_key_pressed(.KEY_SPACE) {
+			game_state = .PAUSED
+		}
+
+
 		if rducc.window_is_key_pressed(.KEY_Q) {
 			{
 				bullet: Entity
 				start_pos := f32(10 * direction) * f32((direction > 0) ? 2.5 : 1.5)
-				bullet.pos = [2]f32{percy_pos.x  + start_pos, percy_pos.y + percy_scale.y/2}
+				bullet.pos = [2]f32{percy_entity.pos.x  + start_pos, percy_entity.pos.y + percy_entity.scale.y/2}
 				bullet.scale = [2]f32{16, 16}
 				bullet.direction = direction
 				collider: pducc.Collider
@@ -168,11 +193,11 @@ run :: proc() {
 		}
 
 		// TC: PHYSICS
-		percy_pos += velocity
+		percy_entity.pos += velocity
 		for idx in 0..<bullet_count {
 			b := &bullets[idx]
 			b_velocity := (300 * dt * f32(b.direction))
-			if pducc.circle_collision(b.collider, enemy_collider) {
+			if pducc.circle_collision(b.collider, enemy_entity.collider) {
 				b_velocity = 0.0
 			}
 			b.pos.x = clamp(b.pos.x + b_velocity,
@@ -190,17 +215,18 @@ run :: proc() {
 			b := bullets[idx]
 			rducc.draw_circle(b.pos, b.scale)
 		}
-		rducc.draw_sprite(percy_texture, percy_pos, percy_scale)
-		rducc.draw_sprite(enemy_texture, enemy_pos, enemy_scale)
+		rducc.draw_sprite(percy_texture, percy_entity.pos, percy_entity.scale)
+		rducc.draw_sprite(enemy_texture, enemy_entity.pos, enemy_entity.scale)
 
 		if debug_mode {
-
+			debug.debug_entity_box(Entity, &bullets[0])
+			debug_mode = false
 		}
 
 		rducc.commit()
 
 		//TC: CLEANUP
-		free_all()
+		free_all(context.temp_allocator)
 		prev_m_pos = m_pos
 
 		//TC: RESET

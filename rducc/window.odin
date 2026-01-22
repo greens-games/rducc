@@ -83,6 +83,7 @@ resize_callback :: proc "c" (window: glfw.WindowHandle, width: c.int, height: c.
 	projection_set()
 }
 
+//TODO: Split this up into more granular functions giving user's more control
 window_close :: proc() -> bool {
 	if glfw.GetKey(ctx.window_hndl, glfw.KEY_ESCAPE) == glfw.PRESS {
 		glfw.SetWindowShouldClose(ctx.window_hndl, true)
