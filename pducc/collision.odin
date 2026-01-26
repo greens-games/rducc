@@ -25,12 +25,14 @@ rect_collision :: proc(a, b: Collider) -> bool {
 	return false
 }
 
+//TODO: This still doesn't work need to spend more time on physics
 circle_collision :: proc(a, b: Collider) -> bool {
 	assert(a.kind == .CIRCLE && b.kind == .CIRCLE, "A and B must both be Circle Colliders")
 	dist_x := a.origin.x - b.origin.x
 	dist_y := a.origin.y - b.origin.y
 	dist := math.sqrt((dist_x * dist_x) + (dist_y * dist_y))
-	return dist <= (1.0)
+	collide_radius := max(a.radius, b.radius)
+	return dist <= collide_radius
 }
 
 circle_rect_collision :: proc(rect, circle: Collider) -> bool {

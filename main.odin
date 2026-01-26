@@ -1,11 +1,15 @@
 package main
 
+import "core:strconv"
+import "core:os/os2"
 import "core:image"
 import "core:image/png"
 import "core:image/bmp"
 import "core:mem"
 import "core:mem/virtual"
 import "core:fmt"
+
+import stbi "vendor:stb/image"
 
 import "debug"
 import "rducc"
@@ -23,7 +27,6 @@ Table of Contents:
 
 Game_State :: enum {
 	PLAYING,
-	MENU,
 	PAUSED,
 }
 
@@ -94,7 +97,7 @@ run :: proc() {
 	}
 
 	collider  := pducc.Collider {
-		kind   = .CIRCLE,
+		kind   = .RECT,
 		origin = enemy_entity.pos,
 		scale  = enemy_entity.scale,
 		radius = enemy_entity.scale.x,
@@ -106,7 +109,7 @@ run :: proc() {
 	assert(arena_err == nil)
 	game_frame_arena_allocator := virtual.arena_allocator(&game_frame_arena)
 
-	bullet_cap := 100
+	bullet_cap := 1
 	bullets := make_slice([]Entity, bullet_cap, game_frame_arena_allocator)
 	bullet_count := 0
 
@@ -116,20 +119,23 @@ run :: proc() {
 	velocity: [2]f32
 	direction: i8 = 1
 
+	debug_enitity: ^Entity = nil
+
 	r_group2 := rducc.render_group_create()
 	for !rducc.window_close() {
-		//TODO: Get some actual menu and pausing stuff going
-		if rducc.window_is_key_pressed(.KEY_P) {
-			game_state = .PLAYING
-		}
-		if game_state == .PAUSED {
-			continue
-		}
 		//TC: INIT
 		m_pos := rducc.window_mouse_pos()
 		m_pos_change = m_pos - prev_m_pos
 
 		dt := f32(rducc.time_delta_get())
+		//TODO: Get some actual menu and pausing stuff going
+		if rducc.window_is_key_pressed(.KEY_P) {
+			game_state = game_state == .PLAYING ? .PAUSED : .PLAYING
+		}
+
+		if game_state == .PAUSED {
+			continue
+		}
 
 		//TC: INPUT
 		if rducc.window_is_mouse_button_down(.MOUSE_BUTTON_LEFT) {
@@ -151,10 +157,6 @@ run :: proc() {
 			debug_mode = !debug_mode
 		}
 
-		if rducc.window_is_key_pressed(.KEY_SPACE) {
-			game_state = .PAUSED
-		}
-
 
 		if rducc.window_is_key_pressed(.KEY_Q) {
 			{
@@ -166,7 +168,7 @@ run :: proc() {
 				collider: pducc.Collider
 				collider.scale = bullet.scale
 				collider.origin = bullet.pos
-				collider.kind = .CIRCLE
+				collider.kind = .RECT
 				collider.radius = bullet.scale.x
 				bullet.collider = collider
 				if bullet_count >= bullet_cap {
@@ -194,10 +196,10 @@ run :: proc() {
 
 		// TC: PHYSICS
 		percy_entity.pos += velocity
-		for idx in 0..<bullet_count {
-			b := &bullets[idx]
+		for index in 0..<bullet_count {
+			b := &bullets[index]
 			b_velocity := (300 * dt * f32(b.direction))
-			if pducc.circle_collision(b.collider, enemy_entity.collider) {
+			if pducc.rect_collision(b.collider, enemy_entity.collider) {
 				b_velocity = 0.0
 			}
 			b.pos.x = clamp(b.pos.x + b_velocity,
@@ -208,19 +210,17 @@ run :: proc() {
 		
 		//TC: RENDER
 		rducc.background_clear(rducc.GRAY)
-		rducc.draw_box({400.0, 500.0}, {64.0, 32.0}, colour = rducc.BLUE)
-		rducc.draw_text("Hello", {400.0, 500.0}, 32)
-		rducc.draw_circle({120.0, 232.0}, {32.0, 16.0}, colour = rducc.RED)
-		for idx in 0..<bullet_count {
-			b := bullets[idx]
-			rducc.draw_circle(b.pos, b.scale)
+		rducc.push_box({120.0, 232.0}, {32.0, 16.0}, colour = rducc.RED)
+		for index in 0..<bullet_count {
+			b := bullets[index]
+			rducc.push_circle(b.pos, b.scale)
 		}
-		rducc.draw_sprite(percy_texture, percy_entity.pos, percy_entity.scale)
-		rducc.draw_sprite(enemy_texture, enemy_entity.pos, enemy_entity.scale)
+		rducc.push_sprite(percy_texture, percy_entity.pos, percy_entity.scale)
+		rducc.push_sprite(enemy_texture, enemy_entity.pos, enemy_entity.scale)
 
 		if debug_mode {
-			debug.debug_entity_box(Entity, &bullets[0])
-			debug_mode = false
+			debug.debug_entity_box({0, f32(rducc.window_height())}, pducc.Collider, &bullets[0].collider)
+			debug.debug_entity_box({f32(rducc.window_width()), f32(rducc.window_height())}, pducc.Collider, &enemy_entity.collider)
 		}
 
 		rducc.commit()

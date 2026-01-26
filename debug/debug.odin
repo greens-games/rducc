@@ -22,20 +22,33 @@ debug_print_pixels :: proc(data: []u8, height, width: int) {
 	}
 }
 
-debug_entity_box :: proc($E: typeid, data: rawptr) {
+debug_entity_box :: proc(pos: [2]f32, $E: typeid, data: rawptr) {
+	font_size := 12
+	
+	box_size := [2]f32{
+		500,
+		f32(10 * i32(font_size))}
 
-	info := type_info_of(E)
-	more_info := runtime.type_info_core(info)
-	casted_data := (^E)(data)^
+	_pos_x := clamp(pos.x - box_size.x,
+		0.0,
+		f32(rducc.window_width()))
+	rducc.push_box({_pos_x, pos.y - f32(9 * i32(font_size))}, box_size, colour = rducc.BLACK)
 
-	sb: strings.Builder
-	strings.builder_init_none(&sb, context.temp_allocator)
-	field_names := reflect.struct_field_names(E)
-	for idx in 0..<more_info.variant.(runtime.Type_Info_Struct).field_count {
-		s_name := fmt.tprintf("%v: ", field_names[idx])
-		s := fmt.tprintf("%v\n", reflect.struct_field_value(casted_data, reflect.struct_field_at(E, int(idx))))
-		strings.write_string(&sb, s_name)
-		strings.write_string(&sb, s)
+	if data != nil {
+		info := type_info_of(E)
+		more_info := runtime.type_info_core(info)
+		casted_data := (^E)(data)^
+
+		sb: strings.Builder
+		strings.builder_init_none(&sb, context.temp_allocator)
+		field_names := reflect.struct_field_names(E)
+		for index in 0..<more_info.variant.(runtime.Type_Info_Struct).field_count {
+			field_value := reflect.struct_field_value(casted_data, reflect.struct_field_at(E, int(index)))
+			s_name := fmt.tprintf("%v: ", field_names[index])
+			s := fmt.tprintf("%v\n", field_value)
+			strings.write_string(&sb, s_name)
+			strings.write_string(&sb, s)
+		}
+		rducc.push_text(strings.to_string(sb), {_pos_x, pos.y - f32(font_size)}, f32(font_size))
 	}
-	fmt.print(strings.to_string(sb))
 }

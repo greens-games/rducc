@@ -34,8 +34,7 @@ Font_Thing :: struct {
 }
 
 main :: proc() {
-	rducc.window_open(980,620,"RDUCC DEMO")
-	rducc.init()
+	rducc.init(980,620,"RDUCC DEMO")
 
 	//// FONT LOADING /////
 	/* my_font_data: []u8 = #load("../res/GomePixel-ARJd7.otf") */
@@ -65,8 +64,8 @@ main :: proc() {
 	for !rducc.window_close() {
 		rducc.background_clear(rducc.RED)
 		/* rducc.draw_box({500.0, 40.0}, {32.0,32.0}, colour = rducc.RED) */
-		draw_font(my_font_thing, "H", {50.0, 50.0}, 16)
-		/* draw_text(&font_ctx, {500.0, 400.0}, 16) */
+		/* draw_font(my_font_thing, "H", {50.0, 50.0}, 16) */
+		draw_text(&font_ctx, {500.0, 400.0}, 16)
 		rducc.commit()
 	}
 }
@@ -81,22 +80,22 @@ load_font :: proc(font_ctx: ^fs.FontContext, font: ^Font_Thing, data: []u8, heig
 	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
 
 	/// TRUETYPE ////
-	font.pixels = make_slice([]byte, width * height)
+	/* font.pixels = make_slice([]byte, width * height)
 	font.char_array = make_slice([]tty.bakedchar, 96)
 	v := tty.BakeFontBitmap(raw_data(data), 0, f32(offset), raw_data(font.pixels[:]), width, height, offset, 96, raw_data(font.char_array[:]))
 	font.hndl = texture_hndl
 	font.height = height
 	font.width = width
-	font.offset = offset
+	font.offset = offset */
 
 	/// FONTSTASH ////
-	/* fs.Init(font_ctx, int(width), int(height), .TOPLEFT)
+	fs.Init(font_ctx, int(width), int(height), .TOPLEFT)
 	fs.AddFontMem(font_ctx, "", data, false)
 	font.hndl = texture_hndl
 	font.pixels = font_ctx.textureData
 	font.width = i32(font_ctx.width)
 	font.height = i32(font_ctx.height)
-	font.offset = offset */
+	font.offset = offset
 
 	/// CODEPOINT BMP
 	/* my_font_info: tty.fontinfo

@@ -10,22 +10,19 @@ Node :: struct {
 	dist: i32,
 }
 
-dijkstras_bfs :: proc(start, goal: [2]i32, entity: ^Entity) {
+dijkstras_bfs :: proc(start, goal: [2]i32, grid: [][]i32) {
 	unvisited := make_dynamic_array([dynamic]Node, context.temp_allocator)
 	visited := make_dynamic_array([dynamic]Node, context.temp_allocator)
-	for r := 0; r < len(game_state.grid); r += 1 {
-		for c := 0; c < len(game_state.grid[0]); c += 1 {
-			//TODO: This works for not going to the same place but sometimes entities just disappear?
-			if !resolve_contains([2]i32{i32(r), i32(c)}, game_state.resolves) {
-				temp_node: Node
-				temp_node.data = {i32(c),i32(r)}
-				temp_node.parent_hndl = -1
-				temp_node.dist = 9999
-				if i32(c) == start.x && i32(r) == start.y {
-					temp_node.dist = 0
-				}
-				append(&unvisited, temp_node)
+	for r := 0; r < len(grid); r += 1 {
+		for c := 0; c < len(grid[0]); c += 1 {
+			temp_node: Node
+			temp_node.data = {i32(c),i32(r)}
+			temp_node.parent_hndl = -1
+			temp_node.dist = 9999
+			if i32(c) == start.x && i32(r) == start.y {
+				temp_node.dist = 0
 			}
+			append(&unvisited, temp_node)
 		}
 	}
 
@@ -57,24 +54,6 @@ dijkstras_bfs :: proc(start, goal: [2]i32, entity: ^Entity) {
 			curr_node = visited[curr_node.parent_hndl]
 		}
 	}
-
-	count:i32 = 0
-	#reverse for m in path {
-		if count >= entity.movement {
-			break
-		}
-		kind: Action_Type
-		switch game_state.grid[m.y][m.x].e_type {
-		case .FREE: kind = .MOVE
-		case .ENEMY: kind = .BLANK
-		case .WALL: kind = .BLANK
-		case .P_CREATURE: kind = .DMG
-		}
-		r := Resolve{kind, entity.id, m}
-		append(&game_state.resolves, r)
-		count += 1
-	}
-	entity.resolve_hndl = i32(len(game_state.resolves))
 }
 
 //UTILS
@@ -109,18 +88,6 @@ contains :: proc(pos: [2]i32, points: [dynamic]Node) -> bool {
 	return does_contain
 }
 
-resolve_contains :: proc(pos: [2]i32, points: [dynamic]Resolve) -> bool {
-	does_contain := false
-	for point in points {
-		if point.target == pos {
-			does_contain = true
-			break
-		}
-	}
-	return does_contain
-}
-
-
 find_pos :: proc(goal: [2]i32, nodes: [dynamic]Node) -> i32 {
 	for &node, index in nodes {
 		if node.data == goal {
@@ -133,16 +100,6 @@ find_pos :: proc(goal: [2]i32, nodes: [dynamic]Node) -> i32 {
 
 valid_cell :: proc(pos: [2]i32) -> bool {
 	valid: bool
-	valid = (pos.x < len(game_state.grid[0]) && pos.x >= 0) && (pos.y < len(game_state.grid) && pos.y >= 0)
-	if valid {
-		switch game_state.grid[pos.y][pos.x].e_type {
-		case .WALL: valid = false
-		case .ENEMY: valid = false
-		case .P_CREATURE: valid = true
-		case .FREE: valid = true
-		}
-	}
-
 	return valid
 }
 
