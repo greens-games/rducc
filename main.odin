@@ -219,8 +219,8 @@ run :: proc() {
 		rducc.push_sprite(enemy_texture, enemy_entity.pos, enemy_entity.scale)
 
 		if debug_mode {
-			debug.debug_entity_box({0, f32(rducc.window_height())}, pducc.Collider, &bullets[0].collider)
-			debug.debug_entity_box({f32(rducc.window_width()), f32(rducc.window_height())}, pducc.Collider, &enemy_entity.collider)
+			debug.debug_entity_box({0, f32(rducc.window_height())}, pducc.Collider, &bullets[0].collider, rducc.BLUE)
+			debug.debug_entity_box({f32(rducc.window_width()), f32(rducc.window_height())}, pducc.Collider, &enemy_entity.collider, rducc.GREEN)
 		}
 
 		rducc.commit()

@@ -22,7 +22,7 @@ debug_print_pixels :: proc(data: []u8, height, width: int) {
 	}
 }
 
-debug_entity_box :: proc(pos: [2]f32, $E: typeid, data: rawptr) {
+debug_entity_box :: proc(pos: [2]f32, $E: typeid, data: rawptr, colour: rducc.Colour) {
 	font_size := 12
 	
 	box_size := [2]f32{
@@ -32,7 +32,7 @@ debug_entity_box :: proc(pos: [2]f32, $E: typeid, data: rawptr) {
 	_pos_x := clamp(pos.x - box_size.x,
 		0.0,
 		f32(rducc.window_width()))
-	rducc.push_box({_pos_x, pos.y - f32(9 * i32(font_size))}, box_size, colour = rducc.BLACK)
+	rducc.push_box({_pos_x, pos.y - f32(9 * i32(font_size))}, box_size, colour = colour)
 
 	if data != nil {
 		info := type_info_of(E)
