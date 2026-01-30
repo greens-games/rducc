@@ -408,13 +408,21 @@ sprite_load :: proc(data: []u8, height, width: int)  -> Ducc_Texture {
 }
 
 //Takes in position data, and texture data to be drawn
-push_sprite :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation: f32 = 0.0, colour := WHITE) {
+push_sprite :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation: f32 = 0.0, flip := [2]bool{}, colour := WHITE) {
 	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
 
 	ctx.loaded_texture = texture
-	push_vertices(pos.xyy, scale, colour)
+
+	//TODO: This doesn't sit well with me 
+	//	flip{false, false} == sprite is right side up
+	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0}, {f32(i32(!flip.x)), 0.0}, colour)
+	push_vertex({pos.x + scale.x, pos.y, 0.0},           {f32(i32(!flip.x)), 1.0}, colour)
+	push_vertex({pos.x, pos.y + scale.y, 0.0},           {f32(i32(flip.x)), 0.0}, colour)
+	push_vertex({pos.x + scale.x, pos.y, 0.0},           {f32(i32(!flip.x)), 1.0}, colour)
+	push_vertex({pos.x, pos.y, 0.0},                     {f32(i32(flip.x)), 1.0}, colour)
+	push_vertex({pos.x, pos.y + scale.y, 0.0},           {f32(i32(flip.x)), 0.0}, colour)
 }
 
 //////////////////////
