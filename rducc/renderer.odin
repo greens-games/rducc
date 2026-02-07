@@ -212,7 +212,28 @@ pixel :: proc(pos: [3]f32, colour: Colour) {
 	gl.DrawArrays(gl.POINTS, 0, len(vertices))
 }
 
-push_box :: proc(pos: [2]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
+	texture := ctx.shape_texture_empty
+	commit()
+
+	ctx.loaded_texture = texture
+
+	length := end - start
+
+	push_vertex({start.x, start.y, 0.0}, {1.0, 0.0}, colour)
+	push_vertex({end.x, end.y, 0.0},     {1.0, 1.0}, colour)
+	
+	//TODO: This should be improved so we can draw a batch of LINES
+	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.width, ctx.loaded_texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
+	vertex_attrib_apply()
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+	gl.DrawArrays(gl.LINES, 0, ctx.batch_vertices_count)
+	ctx.batch_vertices_count = 0
+
+}
+
+push_box :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
@@ -228,34 +249,17 @@ push_box :: proc(pos: [2]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK
 	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour)
 }
 
-push_box_lines :: proc(pos: [3]f32, scale: [2]f32, rotation: f32 = 0.0, colour := PINK) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_render_group.vbo[Render_Buffer.RECT])
+push_box_lines :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 
-	v := vertices_index_box
-	r := f32(colour.r) / 255.
-	g := f32(colour.g) / 255.
-	b := f32(colour.b) / 255.
-	a := f32(colour.a) / 255.
+	//TODO: Each one of these is currently a draw call that will get fixed
+	push_line(pos, pos + {scale.x, 0}, colour)
+	push_line(pos + {scale.x, 0}, pos + scale, colour)
+	push_line(pos + scale, pos + {0, scale.y}, colour)
+	push_line(pos + {0, scale.y}, pos, colour)
 
-	for &vert in v {
-		/* vert.pos = pos
-		vert.scale = scale
-		vert.rotation = rotation */
-		vert.border_colour = colour_apply(colour)
-		vert.colour = [4]f32{0,0,0,0}
-	}
-
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		int(ctx.active_render_group.box_vertices) * size_of(Vertex),
-		size_of(v),
-		&v,
-	)
-
-	ctx.active_render_group.box_vertices += len(vertices_index_box)
 }
 
-push_circle :: proc(pos: [2]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+push_circle :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
@@ -266,7 +270,7 @@ push_circle :: proc(pos: [2]f32, radius: [2]f32, rotation: f32 = 0.0, colour := 
 	push_vertices(pos.xyy, radius, colour, is_circle = true)
 }
 
-push_circle_outline :: proc(pos: [2]f32, radius: [2]f32, rotation: f32 = 0.0, colour := PINK) {
+push_circle_outline :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
@@ -361,7 +365,7 @@ sprite_atlas_load :: proc(data: []u8, height, width:int, sprite_size: i32) -> Du
 //i.e 0,0 will be top left. atlas.rows - 1, atlas.cols - 1 will be bottom right
 //TODO: For non stb loaded images this is upside down
 //TODO: Instead of using indices for getting the texture should use sizes
-push_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, index: [2]i32, rotation: f32 = 0.0, colour := PINK) {
+push_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, index: [2]i32, rotation: f32 = 0.0, colour: Colour) {
 	if (ctx.loaded_texture.hndl != 0 && atlas.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}

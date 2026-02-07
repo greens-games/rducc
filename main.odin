@@ -1,16 +1,14 @@
 package main
 
 import "core:encoding/entity"
-import "core:strconv"
-import "core:os/os2"
 import "core:image"
 import "core:image/png"
 import "core:image/bmp"
 import "core:mem"
 import "core:mem/virtual"
 import "core:fmt"
+import "core:time"
 
-import stbi "vendor:stb/image"
 
 import "debug"
 import "rducc"
@@ -26,12 +24,23 @@ Table of Contents:
 	INIT
 */
 
+_ :: png
+_ :: bmp
+
 Game_State :: enum {
 	PLAYING,
 	PAUSED,
 }
 
+Entity_Kind :: enum {
+	PLAYER,
+	ENEMY,
+	PROJECTILE,
+	PLATFORM,
+}
+
 Entity :: struct {
+	kind:         Entity_Kind,
 	pos:          [2]f32,
 	scale:        [2]f32,
 	collider:     pducc.Collider,
@@ -86,21 +95,33 @@ run :: proc() {
 
 	loaded_textures := make_dynamic_array([dynamic]rducc.Ducc_Texture, game_perm_arena_allocator)
 
-	bullet_cap := 1
+	bullet_cap := 10
 	bullets := make_slice([]Entity, bullet_cap, game_frame_arena_allocator)
+	bullets_to_free := make_slice([]Entity, bullet_cap, game_frame_arena_allocator)
 	bullet_count := 0
 
 	percy_image, percy_image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
 	percy_texture := rducc.sprite_load(percy_image.pixels.buf[:], percy_image.height, percy_image.width)
 	append(&loaded_textures, percy_texture)
-	percy_entity := entity_init({150, 150}, {32, 32}, len(loaded_textures) - 1)
+	percy_entity := entity_init({150, 150}, {32, 32}, .PLAYER, len(loaded_textures) - 1)
 
 	enemy_image, enemy_image_ok := image.load_from_bytes(#load("res/player_filled.png"))
 	enemy_texture := rducc.sprite_load(enemy_image.pixels.buf[:], enemy_image.height, enemy_image.width)
 	append(&loaded_textures, enemy_texture)
-	enemy_entity := entity_init({185, 150}, {32, 32})
+	enemy_entity := entity_init({185, 150}, {32, 32}, .ENEMY)
 
-	ground_entity := entity_init({0, 0}, {f32(600), 96})
+	ground_entity := entity_init({0, 0}, {f32(600), 96}, .PLATFORM)
+
+	entities: [500]Entity
+	entity_count := 0
+	entities[entity_count] = percy_entity
+	entity_count += 1
+
+	entities[entity_count] = enemy_entity
+	entity_count += 1
+
+	entities[entity_count] = ground_entity
+	entity_count += 1
 
 	m_pos_change := [2]f32{0.0, 0.0}
 	prev_m_pos := rducc.window_mouse_pos()
@@ -112,12 +133,18 @@ run :: proc() {
 	move_speed := f32(250)
 	jump_speed := f32(500)
 	starting_height := percy_entity.pos.y
-	gravity := f32(100)
+	gravity := f32(300)
+	jumps := 1
 	jumping := false
 
 	debug_enitity: ^Entity = nil
 
+	frame_count := 0
+	fps := 0
+	fps_timer: time.Stopwatch
+	time.stopwatch_start(&fps_timer)
 	for !rducc.window_close() {
+		frame_count += 1
 		//TC: INIT
 		m_pos := rducc.window_mouse_pos()
 		m_pos_change = m_pos - prev_m_pos
@@ -154,13 +181,11 @@ run :: proc() {
 				bullet := entity_init(
 					{percy_entity.pos.x  + start_pos, percy_entity.pos.y + percy_entity.scale.y/2},
 					{16, 16},
+				    .PROJECTILE,
 					direction = direction
 				)
 
-				if bullet_count >= bullet_cap {
-					bullet_count = 0
-				}
-				bullets[bullet_count] = bullet
+				bullets[bullet_count%(bullet_cap -1)] = bullet
 				bullet_count += 1
 		}
 
@@ -174,8 +199,9 @@ run :: proc() {
 			direction = -1
 		}
 
-		if rducc.window_is_key_pressed(.KEY_SPACE) {
+		if rducc.window_is_key_pressed(.KEY_SPACE) && jumps > 0 {
 			starting_height = percy_entity.pos.y
+			jumps -= 1
 			jumping = true
 		}
 
@@ -185,20 +211,23 @@ run :: proc() {
 		}
 
 		// TC: PHYSICS
-			velocity.y -= (gravity * dt)
 		if jumping {
 			velocity.y += (jump_speed * dt)
-		}
-		if !jumping {
+		} else {
+			velocity.y -= (gravity * dt)
 			if pducc.rect_collision(percy_entity.collider, ground_entity.collider) {
 				velocity.y = 0
+				jumps = 1
 			}
 		}
-		for index in 0..<bullet_count {
+
+		for index in 0..<min(bullet_count, bullet_cap) {
 			b := &bullets[index]
 			b_velocity := (300 * dt * f32(b.direction))
 			if pducc.rect_collision(b.collider, enemy_entity.collider) {
 				b_velocity = 0.0
+				bullets[index] = bullets[min(bullet_count, bullet_cap-1)]
+				bullet_count -= 1
 			}
 			b.pos.x = clamp(b.pos.x + b_velocity,
 							0.0,
@@ -210,20 +239,40 @@ run :: proc() {
 		
 		//TC: RENDER
 		rducc.background_clear(rducc.GRAY)
-		rducc.push_box({120.0, 232.0}, {32.0, 16.0}, colour = rducc.RED)
-		for index in 0..<bullet_count {
+		for index in 0..<min(bullet_count, bullet_cap) {
 			b := bullets[index]
-			rducc.push_circle(b.pos, b.scale)
+			rducc.push_circle(b.pos, b.scale, rducc.RED)
 		}
-		rducc.push_box({0, 0}, {f32(600), 96}, colour = rducc.BLACK)
-		rducc.push_sprite(percy_texture, percy_entity.pos, percy_entity.scale, flip = {direction != 1, false})
-		rducc.push_sprite(enemy_texture, enemy_entity.pos, enemy_entity.scale)
+		for index in 0..<entity_count {
+			entity := entities[index]
+			switch entity.kind {
+			case .PLAYER:
+				rducc.push_sprite(percy_texture, percy_entity.pos, percy_entity.scale, flip = {direction != 1, false})
+			case .ENEMY:
+				rducc.push_sprite(enemy_texture, enemy_entity.pos, enemy_entity.scale)
+			case .PLATFORM:
+				rducc.push_box(ground_entity.pos, ground_entity.scale, rducc.BLACK)
+			case .PROJECTILE:
+			}
+		}
 
 		if debug_mode {
+			for index in 0..<entity_count {
+				entity := entities[index]
+				switch entity.kind {
+				case .PLAYER:
+					rducc.push_box_lines(percy_entity.collider.origin, percy_entity.scale, rducc.BLUE)
+				case .ENEMY:
+					rducc.push_box_lines(enemy_entity.collider.origin, enemy_entity.scale, rducc.BLUE)
+				case .PLATFORM:
+					rducc.push_box_lines(ground_entity.collider.origin, ground_entity.scale, rducc.BLUE)
+				case .PROJECTILE:
+			}
+		}
 			debug.debug_entity_box({0, f32(rducc.window_height())}, pducc.Collider, &ground_entity.collider, rducc.BLUE)
 			debug.debug_entity_box({f32(rducc.window_width()), f32(rducc.window_height())}, pducc.Collider, &percy_entity.collider, rducc.GREEN)
 		}
-
+		rducc.push_text(fmt.tprintf("FPS: %d",fps),{0, f32(600)}, 14)
 		rducc.commit()
 
 		//TC: CLEANUP
@@ -235,16 +284,24 @@ run :: proc() {
 		if percy_entity.pos.y >= jump_height + starting_height {
 			jumping = false
 		}
+
+		if time.stopwatch_duration(fps_timer) >= time.Second {
+			time.stopwatch_reset(&fps_timer)
+			fps = frame_count
+			frame_count = 0
+			time.stopwatch_start(&fps_timer)
+		}
 	}
 }
 
-entity_init :: proc(pos: [2]f32, scale: [2]f32, texture := -1, direction: i8 = 1) -> Entity {
+entity_init :: proc(pos: [2]f32, scale: [2]f32, kind: Entity_Kind, texture := -1, direction: i8 = 1) -> Entity {
 	entity := Entity {
-		pos       = pos,
-		scale     = scale,
+		kind         = kind,
+		pos          = pos,
+		scale        = scale,
 		texture_hndl = i32(texture),
-		direction = direction,
-		alive = true
+		direction    = direction,
+		alive        = true
 	}
 
 	collider  := pducc.Collider {

@@ -166,8 +166,8 @@ window_is_key_down :: proc(key: Key) -> bool {
 window_is_key_pressed :: proc(key: Key) -> bool {
 	key_state := ctx.key_input_queue[key]
 	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button
-	if key_state.curr_state == .UP && key_state.prev_state == .DOWN {
-		 ctx.key_input_queue[key].prev_state = .UP
+	if key_state.curr_state == .DOWN && key_state.prev_state == .UP {
+		 ctx.key_input_queue[key].prev_state = .DOWN
 		return true
 	}
 	return false
@@ -180,8 +180,8 @@ window_is_mouse_button_down :: proc(mouse_button: Mouse_Button) -> bool {
 window_is_mouse_button_pressed :: proc(mouse_button: Mouse_Button) -> bool {
 	mouse_button_state := ctx.mouse_input_queue[mouse_button]
 	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button
-	if mouse_button_state.curr_state == .UP && mouse_button_state.prev_state == .DOWN {
-		 ctx.mouse_input_queue[mouse_button].prev_state = .UP
+	if mouse_button_state.curr_state == .DOWN && mouse_button_state.prev_state == .UP {
+		 ctx.mouse_input_queue[mouse_button].prev_state = .DOWN
 		ctx.mouse_clicked = true
 	}
 	return ctx.mouse_clicked
