@@ -2,6 +2,18 @@
 - Inital intention is to learn graphics programming by building a basic immediate mode graphics renderer library
 - Extend to be a GUI library intended to be used for other desktop applications
 
+## Today
+- Audio
+    - [x] Play some continuous audio
+    - [x] PLayer audio sound effect on a condition
+    - [ ] Store audio for use by game/entities
+- Animation
+    - [x] Idle animation
+    - [x] Animation on a condition
+    - [x] Fix sprite atlas so we can use nxm sprite atlases instead of nxn
+    - [ ] Store animation information to be used by entities
+
+
 ## Notes
 - Don't shy away from dynamic arrays as much
     - We can use these maybe avoid doing allocations to them every frame at runtime
@@ -36,6 +48,18 @@
 - If sets of instructions are used more than once; compress to function
 - If sets of variables need to be used in more than once place; compress into struct/class
     - I kind of already do this but let's to do it more
+
+## Platform Layer
+- X11 window
+    - Process events (input.odin)
+    - setProcAddress (see Karl2d?) used in renderer
+    - time.odin
+    - window.odin
+    - context.odin holds a window handle
+
+## Software Renderer
+- Not sure where to start but something I would love to try
+
 
 ## Renderer missing features
 - Box outline
