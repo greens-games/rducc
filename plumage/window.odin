@@ -62,8 +62,9 @@ mouse_move_callback :: proc "c" (window: glfw.WindowHandle, x_pos, y_pos: f64) {
 
 mouse_scroll_callback :: proc "c" (window: glfw.WindowHandle, x_offset, y_offset: f64) {
 	context = runtime.default_context()
-	if ctx.camera.zoom > 0.0 {
-		ctx.camera.zoom = math.max(1.0, ctx.camera.zoom + f32(y_offset))
+	if ctx.camera != nil && ctx.camera.(Camera_2D).zoom > 0.0 {
+		c := ctx.camera.(Camera_2D)
+		c.zoom = math.max(1.0, ctx.camera.(Camera_2D).zoom + f32(y_offset))
 	}
 }
 

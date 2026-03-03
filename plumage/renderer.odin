@@ -176,6 +176,8 @@ projection_set :: proc() {
 		100.0,
 	) */
 	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
+	ctx.view_matrix = linalg.identity(matrix[4, 4]f32)
+	gl.UniformMatrix4fv(ctx.loaded_uniforms["view"].location, 1, false, &ctx.view_matrix[0, 0])
 }
 
 debug_proc_t :: proc "c" (
@@ -245,12 +247,12 @@ push_box :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0
 
 	ctx.loaded_texture = texture
 
-	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0}, {1.0, 0.0}, colour)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},           {1.0, 1.0}, colour)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},           {1.0, 1.0}, colour)
-	push_vertex({pos.x, pos.y, 0.0},                     {0.0, 1.0}, colour)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour)
+	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0}, {1.0, 0.0}, colour, rotation)
+	push_vertex({pos.x + scale.x, pos.y, 0.0},           {1.0, 1.0}, colour, rotation)
+	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour, rotation)
+	push_vertex({pos.x + scale.x, pos.y, 0.0},           {1.0, 1.0}, colour, rotation)
+	push_vertex({pos.x, pos.y, 0.0},                     {0.0, 1.0}, colour, rotation)
+	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour, rotation)
 }
 
 push_box_lines :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
@@ -595,6 +597,9 @@ colour_apply_hex :: proc(colour: Color) -> [4]f32 {
 }
 
 commit :: proc() {
+	if ctx.camera != nil {
+		gl.UniformMatrix4fv(ctx.loaded_uniforms["view"].location, 1, false, &ctx.view_matrix[0, 0])
+	}
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.width, ctx.loaded_texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
 	vertex_attrib_apply()

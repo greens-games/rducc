@@ -64,6 +64,7 @@
 ## Renderer missing features
 - Box outline
 - Circle outline
+- Optional Z-Indexing
 - Use ttf fonts
 - Custom shaders
 - Camera

@@ -1,5 +1,6 @@
 package plumage
 
+import "core:math/linalg"
 import "core:mem/virtual"
 import "core:mem"
 import "vendor:glfw"
@@ -54,8 +55,9 @@ Context :: struct {
 	loaded_texture:       Ducc_Texture,
 	default_font:         Ducc_Font,
 
-	//NOTE: This should be removed
-	camera:               Camera,
+	//TODO: Maybe this should 
+	camera:               Maybe(Camera_2D),
+	view_matrix:          matrix[4, 4]f32,
 }
 
 Ducc_Texture :: struct {

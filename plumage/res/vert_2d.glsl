@@ -19,10 +19,11 @@ out vec3 _dummy_pos;
 
 /* uniform mat4 transform; */
 uniform mat4 projection;
+uniform mat4 view;
 
 void main()
 {
-	vec4 proj_pos = projection * vec4(aPos, 1.0);
+	vec4 proj_pos = projection * view * vec4(aPos, 1.0);
 	TexCoord = aTexCoord;
 	pos = proj_pos.xyz;
 	colour = i_colour;
