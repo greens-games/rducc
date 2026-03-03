@@ -139,7 +139,11 @@ init :: proc(window_width, window_height: i32, name: cstring) {
 	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
 	gl.EnableVertexAttribArray(5)
 
-	shader_load("/home/goots/dev/ducc/plumage/res/vert_2d.glsl", "/home/goots/dev/ducc/plumage/res/frag_texture.glsl")
+	when ODIN_OS == .Windows {
+		shader_load("c:/mountain/ducc/plumage/res/vert_2d.glsl", "c:/mountain/ducc/plumage/res/frag_texture.glsl")
+	} else when ODIN_OS == .Linux {
+		shader_load("/home/goots/dev/ducc/plumage/res/vert_2d.glsl", "/home/goots/dev/ducc/plumage/res/frag_texture.glsl")
+	}
 
 	font4_img, font4_img_ok := image.load_from_bytes(#load("res/default_font.png"))
 	assert(font4_img_ok == nil, fmt.tprintfln("%v", font4_img_ok))
