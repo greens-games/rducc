@@ -268,7 +268,7 @@ push_box_lines :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32
 //However this is much better for accuracy when scaling up currently
 push_circle :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
-	texture.mode = gl.TRIANGLE_FAN
+	texture.mode = gl.TRIANGLES
 	if should_commit(texture.hndl, texture.mode) {
 		commit()
 	}
@@ -277,13 +277,52 @@ push_circle :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotation: f32
 
 	two_pi := 2.0 * math.PI
 
+	centre_x := pos.x + (diameter.x/2 * math.cos_f32(0))
+	centre_y := pos.y + (diameter.y/2 * math.sin_f32(0))
+	centre := [3]f32{centre_x, centre_y, 0.0}
+
+	prev := centre + f32(diameter.x/2)
 
 	for i in 0..=CIRCLE_SEGMENTS {
 		circ_pos := f32(f64(i) * two_pi / f64(CIRCLE_SEGMENTS))
 		x := pos.x + (diameter.x/2 * math.cos_f32(circ_pos))
 		y := pos.y + (diameter.y/2 * math.sin_f32(circ_pos))
 		z: f32 = 0.0
-		push_vertex({x, y, z}, {0,0}, colour)
+		curr := [3]f32{x, y, z}
+		push_vertex(curr, {0,0}, colour)
+		push_vertex(centre, {0,0}, colour)
+		push_vertex(prev, {0,0}, colour)
+		prev = curr
+	}
+}
+
+push_polygon :: proc(pos: [2]f32, diameter: [2]f32, sides: int, colour: Colour, rotation: f32 = 0.0) {
+	texture := ctx.shape_texture_empty
+	texture.mode = gl.TRIANGLES
+	if should_commit(texture.hndl, texture.mode) {
+		commit()
+	}
+
+	ctx.loaded_texture = texture
+
+	two_pi := 2.0 * math.PI
+
+	centre_x := pos.x + (diameter.x/2 * math.cos_f32(0))
+	centre_y := pos.y + (diameter.y/2 * math.sin_f32(0))
+	centre := [3]f32{centre_x, centre_y, 0.0}
+
+	prev := centre + f32(diameter.x/2)
+
+	for i in 0..=sides {
+		circ_pos := f32(f64(i) * two_pi / f64(sides))
+		x := pos.x + (diameter.x/2 * math.cos_f32(circ_pos))
+		y := pos.y + (diameter.y/2 * math.sin_f32(circ_pos))
+		z: f32 = 0.0
+		curr := [3]f32{x, y, z}
+		push_vertex(curr, {0,0}, colour)
+		push_vertex(centre, {0,0}, colour)
+		push_vertex(prev, {0,0}, colour)
+		prev = curr
 	}
 }
 
