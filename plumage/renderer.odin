@@ -35,6 +35,9 @@ import "vendor:glfw"
 _ :: bmp
 _ :: png
 
+Vec2 :: [2]f32
+Vec3 :: [3]f32
+
 Colour :: [4]f32
 //NOTE: These are ripped straight from Raylib could probably do something else if we wanted
 LIGHTGRAY :: Colour{200, 200, 200, 255} // Light Gray
@@ -239,6 +242,19 @@ push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 	push_vertex({end.x, end.y, 0.0},     {1.0, 1.0}, colour)
 }
 
+push_line2 :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1) {
+	texture := ctx.shape_texture_empty
+	if should_commit(texture.hndl, texture.mode) {
+		commit()
+	}
+
+	ctx.loaded_texture = texture
+
+	length := end - start
+	rot := linalg.atan((end.y - start.y) / (end.x / start.x))
+	push_box({start.x, start.y - thickness}, {length.x, thickness}, colour, rot)
+}
+
 push_box :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
@@ -247,12 +263,55 @@ push_box :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0
 
 	ctx.loaded_texture = texture
 
-	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0}, {1.0, 0.0}, colour, rotation)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},           {1.0, 1.0}, colour, rotation)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour, rotation)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},           {1.0, 1.0}, colour, rotation)
-	push_vertex({pos.x, pos.y, 0.0},                     {0.0, 1.0}, colour, rotation)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},           {0.0, 0.0}, colour, rotation)
+	top_left: Vec3 = {pos.x, pos.y + scale.y, 0}
+	bot_left: Vec3 = {pos.x, pos.y, 0}
+	top_right: Vec3 = {pos.x + scale.x, pos.y + scale.y, 0}
+	bot_right: Vec3 = {pos.x + scale.x, pos.y, 0}
+
+	//NOTE: Pulled from Karl2D adjusted to account for me drawing on bot left
+	if rotation != 0 {
+		//We are assuming origin around centre (Could add an optional field later)
+		half_scale := scale.xy/2
+		origin := pos + half_scale //Centre of shape
+
+		//dx, dy = bottom left adjustments
+		dx := -f32(half_scale.x)
+		dy := -f32(half_scale.y)
+
+		sin_rot := math.sin(rotation)
+		cos_rot := math.cos(rotation)
+
+		bot_left = {
+			origin.x + dx * cos_rot - dy * sin_rot,
+			origin.y + dx * sin_rot + dy * cos_rot,
+			0.0,
+		}
+
+		bot_right = {
+			origin.x + (dx + scale.x) * cos_rot - dy * sin_rot,
+			origin.y + (dx + scale.x) * sin_rot + dy * cos_rot,
+			0.0,
+		}
+
+		top_left = {
+			origin.x + dx * cos_rot - (dy + scale.y) * sin_rot,
+			origin.y + dx * sin_rot + (dy + scale.y) * cos_rot,
+			0.0,
+		}
+
+		top_right = {
+			origin.x + (dx + scale.x) * cos_rot - (dy + scale.y) * sin_rot,
+			origin.y + (dx + scale.x) * sin_rot + (dy + scale.y) * cos_rot,
+			0.0,
+		}
+	}
+
+	push_vertex(top_right, {1.0, 0.0}, colour, rotation)
+	push_vertex(bot_right, {1.0, 1.0}, colour, rotation)
+	push_vertex(top_left,  {0.0, 0.0}, colour, rotation)
+	push_vertex(bot_right, {1.0, 1.0}, colour, rotation)
+	push_vertex(bot_left,  {0.0, 1.0}, colour, rotation)
+	push_vertex(top_left,  {0.0, 0.0}, colour, rotation)
 }
 
 push_box_lines :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
@@ -296,7 +355,7 @@ push_circle :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotation: f32
 	}
 }
 
-push_polygon :: proc(pos: [2]f32, diameter: [2]f32, sides: int, colour: Colour, rotation: f32 = 0.0) {
+push_polygon :: proc(pos: [2]f32, size: f32, sides: int, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.TRIANGLES
 	if should_commit(texture.hndl, texture.mode) {
@@ -307,16 +366,16 @@ push_polygon :: proc(pos: [2]f32, diameter: [2]f32, sides: int, colour: Colour, 
 
 	two_pi := 2.0 * math.PI
 
-	centre_x := pos.x + (diameter.x/2 * math.cos_f32(0))
-	centre_y := pos.y + (diameter.y/2 * math.sin_f32(0))
+	centre_x := pos.x + (size/2 * math.cos_f32(0))
+	centre_y := pos.y + (size/2 * math.sin_f32(0))
 	centre := [3]f32{centre_x, centre_y, 0.0}
 
-	prev := centre + f32(diameter.x/2)
+	prev := centre + f32(size/2)
 
 	for i in 0..=sides {
 		circ_pos := f32(f64(i) * two_pi / f64(sides))
-		x := pos.x + (diameter.x/2 * math.cos_f32(circ_pos))
-		y := pos.y + (diameter.y/2 * math.sin_f32(circ_pos))
+		x := pos.x + (size/2 * math.cos_f32(circ_pos))
+		y := pos.y + (size/2 * math.sin_f32(circ_pos))
 		z: f32 = 0.0
 		curr := [3]f32{x, y, z}
 		push_vertex(curr, {0,0}, colour)
@@ -429,11 +488,7 @@ push_text :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = c
 			i = 0
 			continue
 		}
-		offset_c := i32(c) - font.offset //offset our character so it can be indexed into the array
-		index_y    := offset_c / font.rows //find the row in our atlas from top to bottom
-		adj_cols := ((font.cols) * i32(index_y)) //find the starting point for the row in our imaginary flat array
-		normalized_offset := (i32(offset_c) - adj_cols) //normalize our char index to be 0 to (cols- 1) so we can index into the row
-		push_sprite_atlas(texture, {_pos.x + f32((i32(i) * i32(font_size))), _pos.y}, {font_size, font_size}, {i32(normalized_offset), i32(index_y)}, colour = colour)
+		push_rune(c, {_pos.x + f32((i32(i) * i32(font_size))), _pos.y}, font_size, font, colour = colour)
 		i += 1
 	}
 }
@@ -561,17 +616,7 @@ push_sprite :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation:
 //////////////////////
 push_vertex :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotation: f32 = 0.0, is_circle := false) {
 	vertex: Vertex
-	//TODO: This sucks do better
-	if rotation != 0 {
-		i := linalg.identity(matrix[4, 4]f32)
-		rot := linalg.matrix4_rotate_f32(linalg.to_radians(f32(45.0)), {0.0, 0.0, 1.0})
-		i *= rot
-		temp_pos := [4]f32{pos_coords.x, pos_coords.y, pos_coords.z, 1.0}
-		temp_pos = i * temp_pos
-		vertex.pos_coords = temp_pos.xyz
-	} else {
-		vertex.pos_coords = pos_coords
-	}
+	vertex.pos_coords = pos_coords
 	vertex.texture_coords = uv_coords
 	vertex.colour = colour_apply(colour)
 	vertex.is_circle = f32(int(is_circle))

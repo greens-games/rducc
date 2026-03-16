@@ -27,22 +27,6 @@
     - We can allow for more shaders from the user but this would do another draw call
     - You essentially attach all the render information to some ShaderProgram information
 
-## Demo game
-- Side scrolling
-    - RPG/Metroid vania
-    - Platformer
-    - Survival (like terraria/Noita)
-- Top down
-    - Tactics (Fire emblem)
-    - RTS
-    - Automation
-    - JRPG with overworld + 2D battles
-    - Tower defense
-
-- Other
-    - VTT
-    - Editor
-
 ## Some metholodogies to think of
 - Write the instructions needed to accomplish task so it run; we can try this more at work too
 - If sets of instructions are used more than once; compress to function
@@ -62,10 +46,8 @@
 
 
 ## Renderer missing features
-- Box outline
-- Circle outline
 - Optional Z-Indexing
 - Use ttf fonts
 - Custom shaders
-- Camera
 - Platform separation (currently we use glfw + opengl which works for Windows and Linux fine enough)
+- Basic 3D stuff (don't need complex meshes)
