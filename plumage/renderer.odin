@@ -220,7 +220,13 @@ push_pixel :: proc(pos: [2]f32, colour: Colour) {
 	push_vertex({pos.x, pos.y, 0.0}, {1.0, 0.0}, colour)
 }
 
-push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness := 1) {
+//TODO: Potentially temporary group as we want push_line_box to be go to I believe
+//Currently it makes the grid look cool but not right for most scenarios
+push_line :: proc{
+	push_line_lines, push_line_box
+}
+
+push_line_lines :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.LINES
 	if should_commit(texture.hndl, texture.mode) {
@@ -233,7 +239,7 @@ push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness := 1) {
 	push_vertex({end.x, end.y, 0.0},     {1.0, 1.0}, colour)
 }
 
-push_line2 :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1) {
+push_line_box :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
 		commit()
@@ -247,10 +253,15 @@ push_line2 :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 
 	push_box({start.x, start.y - thickness}, {0, 0}, {length, thickness}, rot, colour)
 }
 
+//NOTE: Trying out procedure groups here not sure if it's needed or too much
+//Trying to confine the logic here into 1 made the signature to long for the basic behaviour for my liking
 push_box :: proc{
 	push_box_base, push_box_rotate
 }
 
+/*
+Basic box draw that does not rotate
+*/
 push_box_base :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
@@ -272,6 +283,9 @@ push_box_base :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 	push_vertex(top_left,  {0.0, 0.0}, colour)
 }
 
+/*
+supply origin and rotation to tell box what to rotate around
+*/
 push_box_rotate :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
