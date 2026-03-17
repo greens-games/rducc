@@ -103,10 +103,6 @@ Vertex :: struct {
 	pos_coords:     [3]f32,
 	texture_coords: [2]f32,
 	colour:         [4]f32,
-	border_colour:  [4]f32,
-	is_circle:       f32,
-	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
-	dummy_pos:     [3]f32,
 }
 
 init :: proc(window_width, window_height: i32, name: cstring) {
@@ -137,11 +133,8 @@ init :: proc(window_width, window_height: i32, name: cstring) {
 	gl.EnableVertexAttribArray(0)
 	gl.EnableVertexAttribArray(1)
 	gl.EnableVertexAttribArray(2)
-	gl.EnableVertexAttribArray(3)
-	gl.EnableVertexAttribArray(4)
-	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
-	gl.EnableVertexAttribArray(5)
 
+	//TODO: Fix these paths so they aren't hard coded like this
 	when ODIN_OS == .Windows {
 		shader_load("c:/mountain/ducc/plumage/res/vert_2d.glsl", "c:/mountain/ducc/plumage/res/frag_texture.glsl")
 	} else when ODIN_OS == .Linux {
@@ -227,7 +220,7 @@ push_pixel :: proc(pos: [2]f32, colour: Colour) {
 	push_vertex({pos.x, pos.y, 0.0}, {1.0, 0.0}, colour)
 }
 
-push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
+push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness := 1) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.LINES
 	if should_commit(texture.hndl, texture.mode) {
@@ -235,8 +228,6 @@ push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 	}
 
 	ctx.loaded_texture = texture
-
-	length := end - start
 
 	push_vertex({start.x, start.y, 0.0}, {1.0, 0.0}, colour)
 	push_vertex({end.x, end.y, 0.0},     {1.0, 1.0}, colour)
@@ -250,12 +241,17 @@ push_line2 :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 
 
 	ctx.loaded_texture = texture
 
-	length := end - start
-	rot := linalg.atan((end.y - start.y) / (end.x / start.x))
-	push_box({start.x, start.y - thickness}, {length.x, thickness}, colour, rot)
+	length := math.sqrt(math.pow((end.x - start.x),2) + math.pow((end.y - start.y),2))
+	//TODO: To do proper rotation we would want to fix/change rotation of a box to have custom origin
+	rot := math.to_degrees(linalg.atan((end.y - start.y) / (end.x / start.x)))
+	push_box({start.x, start.y - thickness}, {0, 0}, {length, thickness}, rot, colour)
 }
 
-push_box :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+push_box :: proc{
+	push_box_base, push_box_rotate
+}
+
+push_box_base :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
 		commit()
@@ -268,42 +264,53 @@ push_box :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0
 	top_right: Vec3 = {pos.x + scale.x, pos.y + scale.y, 0}
 	bot_right: Vec3 = {pos.x + scale.x, pos.y, 0}
 
-	//NOTE: Pulled from Karl2D adjusted to account for me drawing on bot left
-	if rotation != 0 {
-		//We are assuming origin around centre (Could add an optional field later)
-		half_scale := scale.xy/2
-		origin := pos + half_scale //Centre of shape
+	push_vertex(top_right, {1.0, 0.0}, colour)
+	push_vertex(bot_right, {1.0, 1.0}, colour)
+	push_vertex(top_left,  {0.0, 0.0}, colour)
+	push_vertex(bot_right, {1.0, 1.0}, colour)
+	push_vertex(bot_left,  {0.0, 1.0}, colour)
+	push_vertex(top_left,  {0.0, 0.0}, colour)
+}
 
-		//dx, dy = bottom left adjustments
-		dx := -f32(half_scale.x)
-		dy := -f32(half_scale.y)
+push_box_rotate :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour) {
+	texture := ctx.shape_texture_empty
+	if should_commit(texture.hndl, texture.mode) {
+		commit()
+	}
 
-		sin_rot := math.sin(rotation)
-		cos_rot := math.cos(rotation)
+	ctx.loaded_texture = texture
 
-		bot_left = {
-			origin.x + dx * cos_rot - dy * sin_rot,
-			origin.y + dx * sin_rot + dy * cos_rot,
-			0.0,
-		}
+	//We are assuming origin around centre (Could add an optional field later)
+	_origin := pos + origin //Centre of shape
 
-		bot_right = {
-			origin.x + (dx + scale.x) * cos_rot - dy * sin_rot,
-			origin.y + (dx + scale.x) * sin_rot + dy * cos_rot,
-			0.0,
-		}
+	dx: f32 = -origin.x
+	dy: f32 = -origin.y
 
-		top_left = {
-			origin.x + dx * cos_rot - (dy + scale.y) * sin_rot,
-			origin.y + dx * sin_rot + (dy + scale.y) * cos_rot,
-			0.0,
-		}
+	sin_rot := math.sin(rotation)
+	cos_rot := math.cos(rotation)
 
-		top_right = {
-			origin.x + (dx + scale.x) * cos_rot - (dy + scale.y) * sin_rot,
-			origin.y + (dx + scale.x) * sin_rot + (dy + scale.y) * cos_rot,
-			0.0,
-		}
+	bot_left := Vec3{
+		_origin.x + dx * cos_rot - dy * sin_rot,
+		_origin.y + dx * sin_rot + dy * cos_rot,
+		0.0,
+	}
+
+	bot_right := Vec3{
+		_origin.x + (dx + scale.x) * cos_rot - dy * sin_rot,
+		_origin.y + (dx + scale.x) * sin_rot + dy * cos_rot,
+		0.0,
+	}
+
+	top_left := Vec3{
+		_origin.x + dx * cos_rot - (dy + scale.y) * sin_rot,
+		_origin.y + dx * sin_rot + (dy + scale.y) * cos_rot,
+		0.0,
+	}
+
+	top_right := Vec3{
+		_origin.x + (dx + scale.x) * cos_rot - (dy + scale.y) * sin_rot,
+		_origin.y + (dx + scale.x) * sin_rot + (dy + scale.y) * cos_rot,
+		0.0,
 	}
 
 	push_vertex(top_right, {1.0, 0.0}, colour, rotation)
@@ -413,30 +420,6 @@ push_circle_lines :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotatio
 		prev = curr
 	}
 	push_line(prev, first, colour)
-}
-
-//NOTE: This I believe it more efficient than the above when needing MANY circles (less vertices to draw, and CPU math)
-//TODO: Currently a bug with the Shader where when you increase the radius you actually move the origin
-push_circle_2 :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
-	texture := ctx.shape_texture_empty
-	if should_commit(texture.hndl, texture.mode) {
-		commit()
-	}
-
-	ctx.loaded_texture = texture
-
-	push_vertices(pos.xyy, radius, colour, is_circle = true)
-}
-
-push_circle_outline :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
-	texture := ctx.shape_texture_empty
-	if should_commit(texture.hndl, texture.mode) {
-		commit()
-	}
-
-	ctx.loaded_texture = texture
-
-	push_vertices(pos.xyy, radius, colour, is_circle = true)
 }
 
 //////////////////////
@@ -614,12 +597,11 @@ push_sprite :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation:
 //////////////////////
 /////TC: UTILS ///////
 //////////////////////
-push_vertex :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotation: f32 = 0.0, is_circle := false) {
+push_vertex :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	vertex: Vertex
 	vertex.pos_coords = pos_coords
 	vertex.texture_coords = uv_coords
 	vertex.colour = colour_apply(colour)
-	vertex.is_circle = f32(int(is_circle))
 
 	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
@@ -628,32 +610,6 @@ push_vertex :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotat
 		&vertex,
 	)
 	ctx.batch_vertices_count += 1
-}
-
-push_vertices :: proc(pos: [3]f32, scale: [2]f32, colour: Colour, is_circle := false) {
-	vertices := [?]Vertex {
-		{pos_coords = {pos.x + scale.x, pos.y + scale.y, 0.0}, texture_coords = {1.0, 0.0}},
-
-		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {1.0, 1.0}},
-		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {0.0, 0.0}},
-		{pos_coords = {pos.x + scale.x, pos.y, 0.0},           texture_coords = {1.0, 1.0}},
-		{pos_coords = {pos.x, pos.y, 0.0},                     texture_coords = {0.0, 1.0}},
-		{pos_coords = {pos.x, pos.y + scale.y, 0.0},           texture_coords = {0.0, 0.0}},
-	}
-	for &vert, i in vertices {
-		vert.colour   = colour_apply(colour)
-		vert.is_circle = f32(int(is_circle))
-		vert.dummy_pos = vertices_index_box[i].pos_coords
-	}
-
-	//TODO: Instead of using subData here we can store all vertex info on the CPU in Context then pass that to the gpu in @commit()
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		int(ctx.batch_vertices_count) * size_of(Vertex),
-		size_of(vertices),
-		&vertices,
-	)
-	ctx.batch_vertices_count += len(vertices)
 }
 
 @(private)
@@ -703,8 +659,4 @@ vertex_attrib_apply :: proc() {
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), (0 * size_of(f32)))
 	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
 	gl.VertexAttribPointer(2, 4, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
-	gl.VertexAttribPointer(3, 4, gl.FLOAT, false, size_of(Vertex), (9 * size_of(f32)))
-	gl.VertexAttribPointer(4, 1, gl.FLOAT, false, size_of(Vertex), (13 * size_of(f32)))
-	//TODO: remove dummy_pos stuff when after fixing fill_circle logic for actual position
-	gl.VertexAttribPointer(5, 3, gl.FLOAT, false, size_of(Vertex), (14 * size_of(f32)))
 }
