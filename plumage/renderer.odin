@@ -38,7 +38,8 @@ _ :: png
 Vec2 :: [2]f32
 Vec3 :: [3]f32
 
-Colour :: [4]f32
+Color :: Colour
+Colour :: [4]u8
 //NOTE: These are ripped straight from Raylib could probably do something else if we wanted
 LIGHTGRAY :: Colour{200, 200, 200, 255} // Light Gray
 GRAY :: Colour{130, 130, 130, 255} // Gray
@@ -67,10 +68,6 @@ BLANK :: Colour{0, 0, 0, 0} // Blank (Transparent)
 MAGENTA :: Colour{255, 0, 255, 255} // Magenta
 
 CIRCLE_SEGMENTS :: 24
-
-Color :: enum u32 {
-	BLACK =  0x000000FF// Black
-}
 
 DEFAULT_BUFF_SIZE :: mem.Kilobyte * 64
 
@@ -134,18 +131,16 @@ init :: proc(window_width, window_height: i32, name: cstring) {
 	gl.EnableVertexAttribArray(1)
 	gl.EnableVertexAttribArray(2)
 
-	//TODO: Fix these paths so they aren't hard coded like this
-	when ODIN_OS == .Windows {
-		shader_load("c:/mountain/ducc/plumage/res/vert_2d.glsl", "c:/mountain/ducc/plumage/res/frag_texture.glsl")
-	} else when ODIN_OS == .Linux {
-		shader_load("/home/goots/dev/ducc/plumage/res/vert_2d.glsl", "/home/goots/dev/ducc/plumage/res/frag_texture.glsl")
-	}
+	//TODO: These can't be freed (probably ok since they last the whole program
+	vs := #load("res/vert_2d.glsl")
+	fs := #load("res/frag_texture.glsl")
+	shader_load_from_mem(vs, fs)
 
 	font4_img, font4_img_ok := image.load_from_bytes(#load("res/default_font.png"))
 	assert(font4_img_ok == nil, fmt.tprintfln("%v", font4_img_ok))
 	ctx.default_font = font_load(font4_img.pixels.buf[:], font4_img.width, font4_img.height, 32, 30)
 
-	white_rect: []u8 = make_slice([]u8, 1024) //TODO: This might need to be an arena or something
+	white_rect: []u8 = make_slice([]u8, 1024) //NOTE: probably fine to jsut be heap allocated
 	slice.fill(white_rect, 255)
 	ctx.shape_texture_empty = sprite_load(white_rect, 16, 16)
 	projection_set()
@@ -248,9 +243,11 @@ push_line_box :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32
 	ctx.loaded_texture = texture
 
 	length := math.sqrt(math.pow((end.x - start.x),2) + math.pow((end.y - start.y),2))
+	length2 := end - start
 	//TODO: To do proper rotation we would want to fix/change rotation of a box to have custom origin
 	rot := math.to_degrees(linalg.atan((end.y - start.y) / (end.x / start.x)))
-	push_box({start.x, start.y - thickness}, {0, 0}, {length, thickness}, rot, colour)
+	/* linalg.normalize */
+	push_box({start.x, start.y}, {0, 0}, {length, thickness}, rot, colour)
 }
 
 //NOTE: Trying out procedure groups here not sure if it's needed or too much
@@ -285,6 +282,9 @@ push_box_base :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 
 /*
 supply origin and rotation to tell box what to rotate around
+rotation is in degress i.e 45 degree angle
+{0, 0} origin is bottom left
+scale/2 origin is centre
 */
 push_box_rotate :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
@@ -344,6 +344,16 @@ push_box_lines :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32
 
 }
 
+push_box_lines2 :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+
+	push_line(pos, pos + {scale.x, 0}, colour)
+	push_line(pos + {scale.x, 0}, pos + scale, colour)
+	push_line(pos + scale, pos + {0, scale.y}, colour)
+	push_line(pos + {0, scale.y}, pos, colour)
+
+}
+
+
 //NOTE: Possible issue here is that all our other draws are bottom left origins, this is center
 //However this is much better for accuracy when scaling up currently
 push_circle :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotation: f32 = 0.0) {
@@ -376,7 +386,7 @@ push_circle :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotation: f32
 	}
 }
 
-push_polygon :: proc(pos: [2]f32, size: f32, sides: int, colour: Colour, rotation: f32 = 0.0) {
+push_polygon :: proc(pos: [2]f32, size: [2]f32, sides: int, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.TRIANGLES
 	if should_commit(texture.hndl, texture.mode) {
@@ -387,16 +397,16 @@ push_polygon :: proc(pos: [2]f32, size: f32, sides: int, colour: Colour, rotatio
 
 	two_pi := 2.0 * math.PI
 
-	centre_x := pos.x + (size/2 * math.cos_f32(0))
-	centre_y := pos.y + (size/2 * math.sin_f32(0))
+	centre_x := pos.x + (size.x/2 * math.cos_f32(0))
+	centre_y := pos.y + (size.y/2 * math.sin_f32(0))
 	centre := [3]f32{centre_x, centre_y, 0.0}
 
-	prev := centre + f32(size/2)
+	prev := centre + size.xyx/2
 
 	for i in 0..=sides {
 		circ_pos := f32(f64(i) * two_pi / f64(sides))
-		x := pos.x + (size/2 * math.cos_f32(circ_pos))
-		y := pos.y + (size/2 * math.sin_f32(circ_pos))
+		x := pos.x + (size.x/2 * math.cos_f32(circ_pos))
+		y := pos.y + (size.y/2 * math.sin_f32(circ_pos))
 		z: f32 = 0.0
 		curr := [3]f32{x, y, z}
 		push_vertex(curr, {0,0}, colour)
@@ -641,6 +651,7 @@ colour_apply :: proc(colour: Colour) -> [4]f32 {
 	return {r, g, b, a}
 }
 
+when 1 == 0 {
 colour_apply_hex :: proc(colour: Color) -> [4]f32 {
 	colour := u32(colour)
 	r := f32((colour >> 24) & 0xFF ) / 255.
@@ -648,6 +659,7 @@ colour_apply_hex :: proc(colour: Color) -> [4]f32 {
 	b := f32((colour >> 8) & 0xFF ) / 255.
 	a := f32((colour) & 0xFF ) / 255.
 	return {r, g, b, a}
+}
 }
 
 commit :: proc() {

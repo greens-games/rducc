@@ -126,7 +126,7 @@ simulate_level :: proc(dt: f32, player: ^constants.Entity, entities: []constants
 		case .GOAL:
 		case .PARTICLE:
 			entity.pos.y += 250 * dt
-			entity.colour.a -= 0.1
+			entity.colour.a -= 1
 			if entity.colour.a <= 0 {
 				start_x := f32(rand.uint_range(2, 42))
 				start_y := f32(rand.uint_range(5, 17))

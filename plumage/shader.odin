@@ -29,6 +29,24 @@ shader_load :: proc(vs_shader, fs_shader: string) -> u32 {
 	return program_id
 }
 
+shader_load_from_mem :: proc(vs_shader, fs_shader: []byte) -> u32 {
+
+	//TODO:manual shader loading, compiling, etc... (Makes debugging easier), use OpenGL/helpers.odin as example
+	program_id, ok := gl.load_shaders_source(string(vs_shader), string(fs_shader))
+	if !ok {
+		panic(fmt.tprintfln("FAILED TO LOAD SHADERS: %v",gl.get_last_error_message()))
+	}
+	ctx.loaded_uniforms = gl.get_uniforms_from_program(program_id)
+	shader_program: Shader_Progam = {
+		program_id,
+		gl.get_uniforms_from_program(program_id)
+	}
+	ctx.shader_cache[ctx.shader_cache_count] = shader_program
+	ctx.shader_cache_count += 1
+	gl.UseProgram(program_id)
+	return program_id
+}
+
 uniforms_load :: proc() {
 }
 
