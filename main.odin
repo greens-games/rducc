@@ -20,6 +20,7 @@ import "peck"
 import "quack"
 import "demo_game"
 import "constants"
+import "../game_utils"
 
 
 /**
@@ -237,7 +238,7 @@ run :: proc() {
 			}
 			if debug_active_entity > -1 {
 				thing := entities[debug_active_entity]
-				debug.debug_entity_box({thing.pos.x, thing.pos.y + thing.scale.y}, constants.Entity, &thing, plumage.BLACK)
+				game_utils.debug_entity_box({thing.pos.x, thing.pos.y + thing.scale.y}, thing.collider, plumage.BLACK)
 			}
 		}
 		if anim_playing {

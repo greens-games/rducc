@@ -147,6 +147,7 @@ Input_Kind :: enum u8 {
 }
 
 Input_Action :: struct {
+	pressed:    bool,
 	prev_state: Input_Kind,
 	curr_state: Input_Kind,
 }
@@ -162,6 +163,7 @@ window_is_key_down :: proc(key: Key) -> bool {
 	return glfw.GetKey(ctx.window_hndl, i32(key)) == glfw.PRESS
 }
 
+//TODO: This consumes the key meaning we can't have 2 "is_key_pressed" for the same key in different spots
 window_is_key_pressed :: proc(key: Key) -> bool {
 	key_state := ctx.key_input_queue[key]
 	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button

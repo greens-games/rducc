@@ -28,6 +28,7 @@ REQUIRED to start using a camera for a given chunk of draws
 centres camera on 'target', and applies a view translation to all things drawn withing the camera begin and camera end
 */
 camera_begin :: proc(camera: Camera_2D) {
+	commit()
 	ctx.camera = camera
 	c := ctx.camera.(Camera_2D)
 	inv_target_translate := linalg.matrix4_translate_f32({-c.target.x, -c.target.y, 0})
