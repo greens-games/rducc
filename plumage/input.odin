@@ -148,6 +148,7 @@ Input_Kind :: enum u8 {
 
 Input_Action :: struct {
 	pressed:    bool,
+	held:       bool,
 	prev_state: Input_Kind,
 	curr_state: Input_Kind,
 }
@@ -165,13 +166,14 @@ window_is_key_down :: proc(key: Key) -> bool {
 
 //TODO: This consumes the key meaning we can't have 2 "is_key_pressed" for the same key in different spots
 window_is_key_pressed :: proc(key: Key) -> bool {
-	key_state := ctx.key_input_queue[key]
+	/* key_state := ctx.key_input_queue[key]
 	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button
 	if key_state.curr_state == .DOWN && key_state.prev_state == .UP {
 		 ctx.key_input_queue[key].prev_state = .DOWN
 		return true
 	}
-	return false
+	return false */
+	return ctx.key_input_queue[key].pressed
 }
 
 window_is_mouse_button_down :: proc(mouse_button: Mouse_Button) -> bool {
@@ -205,4 +207,7 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 	context = runtime.default_context()
 	ctx.key_input_queue[key].prev_state = ctx.key_input_queue[key].curr_state
 	ctx.key_input_queue[key].curr_state = Input_Kind(action)
+
+	ctx.key_input_queue[key].pressed = Input_Kind(action) == .DOWN
+	ctx.key_input_queue[key].held = Input_Kind(action) == .DOWN || Input_Kind(action) == .REPEAT
 }
