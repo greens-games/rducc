@@ -120,6 +120,10 @@ init :: proc(window_width, window_height: i32, name: cstring) {
 		gl.TRUE,
 	)
 
+	gl.GenBuffers(1, &ctx.active_vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_vbo)
+	gl.BufferData(gl.ARRAY_BUFFER, mem.Megabyte, nil, gl.DYNAMIC_DRAW)
+
 	//TODO: These can't be freed (probably ok since they last the whole program
 	vs := #load("res/vert_2d.glsl")
 	fs := #load("res/frag_texture.glsl")

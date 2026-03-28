@@ -19,7 +19,6 @@ Var_Type :: union {
 Shader_Progam :: struct {
 	hndl:     u32,
 	vao:      u32,
-	vbo:      u32,
 	uniforms: gl.Uniforms,
 }
 
@@ -73,6 +72,7 @@ shader_load_from_mem :: proc(vs_shader, fs_shader: []byte) -> u32 {
 	return program_id
 }
 
+//TODO: probably some cleanup can be done here
 shader_parse_attributes :: proc(program_id: u32) -> Shader_Progam {
 	shader_program: Shader_Progam 
 	num_attrs: i32
@@ -112,9 +112,6 @@ shader_parse_attributes :: proc(program_id: u32) -> Shader_Progam {
 	//Do the vertex attrib pointer stuff
 	offset := 0
 
-	gl.GenBuffers(1, &shader_program.vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, shader_program.vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, mem.Megabyte, nil, gl.DYNAMIC_DRAW)
 	gl.GenVertexArrays(1, &shader_program.vao)
 	gl.BindVertexArray(shader_program.vao)
 
@@ -129,3 +126,5 @@ shader_parse_attributes :: proc(program_id: u32) -> Shader_Progam {
 	shader_program.uniforms = gl.get_uniforms_from_program(program_id)
 	return shader_program
 }
+
+//TODO: parse and load uniforms
