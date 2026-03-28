@@ -3,9 +3,9 @@
 - Extend to be a GUI library intended to be used for other desktop applications
 
 ## Priorities
-- Better input handling (in the works)
 - Custom shaders (Needed for lighting and stuff)
-
+- Have an option to grab a custom rect from a sprite atlas
+    - in karl2d/Raylib this is src rect from DrawTexturePro
 
 ## Notes
 - Don't shy away from dynamic arrays as much
