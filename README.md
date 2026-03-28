@@ -2,16 +2,9 @@
 - Inital intention is to learn graphics programming by building a basic immediate mode graphics renderer library
 - Extend to be a GUI library intended to be used for other desktop applications
 
-## Today
-- Audio
-    - [x] Play some continuous audio
-    - [x] PLayer audio sound effect on a condition
-    - [ ] Store audio for use by game/entities
-- Animation
-    - [x] Idle animation
-    - [x] Animation on a condition
-    - [x] Fix sprite atlas so we can use nxm sprite atlases instead of nxn
-    - [ ] Store animation information to be used by entities
+## Priorities
+- Better input handling (in the works)
+- Custom shaders (Needed for lighting and stuff)
 
 
 ## Notes

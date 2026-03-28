@@ -1,5 +1,6 @@
 package main
 
+import "core:os"
 import "core:math"
 import "core:image"
 import "core:image/png"
@@ -136,7 +137,11 @@ run :: proc() {
 		}
 
 		if plumage.window_is_key_pressed(.KEY_R) {
-			plumage.shader_load("res/vert_2d.glsl", "res/frag_texture.glsl")
+			vs, vs_ok := os.read_entire_file_from_path("plumage/res/vert_2d.glsl", context.temp_allocator)
+			assert(vs_ok == nil, "Vert shader didn't load from file")
+			fs, fs_ok := os.read_entire_file_from_path("plumage/res/frag_texture.glsl", context.temp_allocator)
+			assert(fs_ok == nil, "Frag shader didn't load from file")
+			plumage.shader_load_from_mem(vs, fs)
 			plumage.projection_set()
 		}
 

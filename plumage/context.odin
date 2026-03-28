@@ -6,19 +6,6 @@ import "core:mem"
 import "vendor:glfw"
 import gl "vendor:OpenGL"
 
-Shader_Progams :: enum u8 {
-	PRIMITIVE,
-	CIRCLE,
-	CIRCLE_OUTLINE,
-	TEXTURE,
-	GRID,
-}
-
-Shader_Progam :: struct {
-	hndl: u32,
-	uniforms: gl.Uniforms,
-}
-
 Context :: struct {
 	//NOTE: Window
 	window_hndl:          glfw.WindowHandle,
@@ -48,6 +35,9 @@ Context :: struct {
 	//Input
 	key_input_queue:      [u32(Key.COUNT)]Input_Action,
 	mouse_input_queue:    [u32(Mouse_Button.COUNT)]Input_Action,
+	//TODO: Offset the events instead of having 32 entries of buffer
+	curr_events:          [u32(Key.COUNT)]Input_Action,
+	prev_events:          [u32(Key.COUNT)]Input_Action,
 	mouse_clicked:        bool,
 
 	//Textures
@@ -89,6 +79,8 @@ Ducc_Font :: struct {
 	sprite_size: i32,
 	offset:      i32,
 }
+
+GLFW_KEY_OFFSET :: 32
 
 //TODO: This probably shouldn't be a static global, maybe make it a pointer you can pass around when needed on init?
 // That being said the consumer probably shouldn't care too much about this context it's more for the platform layer and/or renderer to use to do stuff

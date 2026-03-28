@@ -108,6 +108,8 @@ init :: proc(window_width, window_height: i32, name: cstring) {
 	gl.Viewport(0, 0, ctx.window_width, ctx.window_height)
 	gl.Enable(gl.DEBUG_OUTPUT)
 	gl.Enable(gl.DEBUG_OUTPUT_SYNCHRONOUS)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	gl.DebugMessageCallback(debug_proc_t, {})
 	gl.DebugMessageControl(
 		gl.DEBUG_SOURCE_API,
@@ -118,23 +120,26 @@ init :: proc(window_width, window_height: i32, name: cstring) {
 		gl.TRUE,
 	)
 
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-	gl.GenBuffers(1, &ctx.active_vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, mem.Megabyte, nil, gl.DYNAMIC_DRAW)
-
-	gl.GenVertexArrays(1, &ctx.active_vao)
-	gl.BindVertexArray(ctx.active_vao)
-	gl.EnableVertexAttribArray(0)
-	gl.EnableVertexAttribArray(1)
-	gl.EnableVertexAttribArray(2)
-
 	//TODO: These can't be freed (probably ok since they last the whole program
 	vs := #load("res/vert_2d.glsl")
 	fs := #load("res/frag_texture.glsl")
 	shader_load_from_mem(vs, fs)
+
+
+	when 1 == 0 {
+		gl.GenBuffers(1, &ctx.active_vbo)
+		gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_vbo)
+		gl.BufferData(gl.ARRAY_BUFFER, mem.Megabyte, nil, gl.DYNAMIC_DRAW)
+
+		gl.GenVertexArrays(1, &ctx.active_vao)
+		gl.BindVertexArray(ctx.active_vao)
+		gl.EnableVertexAttribArray(0)
+		gl.EnableVertexAttribArray(1)
+		gl.EnableVertexAttribArray(2)
+		gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), (0 * size_of(f32)))
+		gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
+		gl.VertexAttribPointer(2, 4, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
+	}
 
 	font4_img, font4_img_ok := image.load_from_bytes(#load("res/default_font.png"))
 	assert(font4_img_ok == nil, fmt.tprintfln("%v", font4_img_ok))
@@ -217,9 +222,6 @@ push_pixel :: proc(pos: [2]f32, colour: Colour) {
 
 //TODO: Potentially temporary group as we want push_line_box to be go to I believe
 //Currently it makes the grid look cool but not right for most scenarios
-push_line :: proc{
-	push_line_lines, push_line_box
-}
 
 push_line_lines :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
@@ -234,7 +236,7 @@ push_line_lines :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 	push_vertex({end.x, end.y, 0.0},     {1.0, 1.0}, colour)
 }
 
-push_line_box :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32) {
+push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
 		commit()
@@ -242,12 +244,12 @@ push_line_box :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32
 
 	ctx.loaded_texture = texture
 
-	length := math.sqrt(math.pow((end.x - start.x),2) + math.pow((end.y - start.y),2))
 	length2 := end - start
+	l := linalg.length(length2)
 	//TODO: To do proper rotation we would want to fix/change rotation of a box to have custom origin
-	rot := math.to_degrees(linalg.atan((end.y - start.y) / (end.x / start.x)))
+	rot := math.atan2(end.y - start.y, end.x - start.x)
 	/* linalg.normalize */
-	push_box({start.x, start.y}, {0, 0}, {length, thickness}, rot, colour)
+	push_box({start.x, start.y}, {0, 0}, {l, thickness}, rot, colour)
 }
 
 //NOTE: Trying out procedure groups here not sure if it's needed or too much
@@ -668,7 +670,6 @@ commit :: proc() {
 	}
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.width, ctx.loaded_texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
-	vertex_attrib_apply()
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 	/* blah := ctx.batch_vertices[:ctx.batch_vertices_count]
 	gl.BufferSubData(
@@ -682,7 +683,4 @@ commit :: proc() {
 }
 
 vertex_attrib_apply :: proc() {
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), (0 * size_of(f32)))
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
-	gl.VertexAttribPointer(2, 4, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
 }
