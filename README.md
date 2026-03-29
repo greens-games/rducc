@@ -2,8 +2,17 @@
 - Inital intention is to learn graphics programming by building a basic immediate mode graphics renderer library
 - Extend to be a GUI library intended to be used for other desktop applications
 
+## Today
+- test out custom shader
+    - not working  might need to bind buffers or something along those lines for now
+    - requires more work
+- start more game stuff for now?
+
 ## Priorities
 - Custom shaders (Needed for lighting and stuff)
+    - Working for default shader
+    - Issue for custom shaders:
+        - push_vertex is reliant on specific sizes of vertices because we use BufferSubData there
 - Have an option to grab a custom rect from a sprite atlas
     - in karl2d/Raylib this is src rect from DrawTexturePro
 

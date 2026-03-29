@@ -16,6 +16,7 @@ Context :: struct {
 	program_cache:        [10]u32, //Could be dynamic
 	shader_cache:         [10]Shader_Progam, //Could be dynamic
 	shader_cache_count:   u32,
+	loaded_shader:        Shader_Progam,
 	loaded_program:       u32,
 	loaded_uniforms:      gl.Uniforms,
 	shape_texture_empty:  Ducc_Texture, //White box
@@ -23,7 +24,7 @@ Context :: struct {
 	//NOTE: Batching stuff
 	active_vao:           u32,
 	batch_vertices_count: i32,
-	batch_vertices:       [DEFAULT_BUFF_SIZE]Vertex,
+	batch_vertices:       [DEFAULT_BUFF_SIZE]byte,
 	active_vbo:           u32,
 
 	//NOTE: Misc 

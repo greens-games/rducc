@@ -12,14 +12,21 @@ Attribute_Kind :: enum {
 	VEC4,
 }
 
+Uniform_Kind :: enum {
+	MATRIX_4,
+	VEC4_F32,
+}
+
 Var_Type :: union {
 	Attribute_Kind
 }
 
 Shader_Progam :: struct {
-	hndl:     u32,
-	vao:      u32,
-	uniforms: gl.Uniforms,
+	id:          u32,
+	hndl:        u32,
+	vao:         u32,
+	vertex_size: i32,
+	uniforms:    gl.Uniforms,
 }
 
 Shader_Var_Kind :: enum {
@@ -28,28 +35,27 @@ Shader_Var_Kind :: enum {
 }
 
 Shader_Var :: struct {
-	type:     Var_Type,
-	size:     i32,
-	location: u32,
+	type:        Var_Type,
+	size:        i32,
+	location:    u32,
 }
 
 //TODO: Free uniforma data
-shader_load :: proc(vs_shader, fs_shader: string) -> u32 {
+shader_load :: proc(vs_shader, fs_shader: string) -> Shader_Progam {
 
 	//TODO:manual shader loading, compiling, etc... (Makes debugging easier), use OpenGL/helpers.odin as example
 	program_id, ok := gl.load_shaders_file(vs_shader, fs_shader)
 	if !ok {
 		panic(fmt.tprintfln("FAILED TO LOAD SHADERS: %v",gl.get_last_error_message()))
 	}
-	ctx.loaded_uniforms = gl.get_uniforms_from_program(program_id)
 	shader_program := shader_parse_attributes(program_id)
 	ctx.shader_cache[ctx.shader_cache_count] = shader_program
 	ctx.shader_cache_count += 1
-	gl.UseProgram(program_id)
-	return program_id
+	/* gl.UseProgram(program_id) */
+	return shader_program
 }
 
-shader_load_from_mem :: proc(vs_shader, fs_shader: []byte) -> u32 {
+shader_load_from_mem :: proc(vs_shader, fs_shader: []byte) -> Shader_Progam {
 
 	program_id, ok := gl.load_shaders_source(string(vs_shader), string(fs_shader))
 	if !ok {
@@ -68,8 +74,8 @@ shader_load_from_mem :: proc(vs_shader, fs_shader: []byte) -> u32 {
 	shader_program := shader_parse_attributes(program_id)
 	ctx.shader_cache[ctx.shader_cache_count] = shader_program
 	ctx.shader_cache_count += 1
-	gl.UseProgram(program_id)
-	return program_id
+	/* gl.UseProgram(program_id) */
+	return shader_program
 }
 
 //TODO: probably some cleanup can be done here
@@ -106,8 +112,8 @@ shader_parse_attributes :: proc(program_id: u32) -> Shader_Progam {
 		case .VEC3: attribute.size = 3
 		case .VEC4: attribute.size = 4
 		}
-		append(&attributes, attribute)
 		stride += attribute.size * size_of(f32)
+		append(&attributes, attribute)
 	}
 	//Do the vertex attrib pointer stuff
 	offset := 0
@@ -121,10 +127,39 @@ shader_parse_attributes :: proc(program_id: u32) -> Shader_Progam {
 		gl.VertexAttribPointer(attr.location, attr.size, gl.FLOAT, false, stride, uintptr(offset * size_of(f32)))
 		offset += int(attr.size)
 	}
-	ctx.loaded_uniforms = gl.get_uniforms_from_program(program_id)
-	shader_program.hndl = program_id
+	//NOTE: Could maybe change this to be my own uniform loading but this should work fine for now
 	shader_program.uniforms = gl.get_uniforms_from_program(program_id)
+	shader_program.hndl = program_id
+	shader_program.vertex_size = stride
+	shader_program.id = ctx.shader_cache_count
 	return shader_program
+}
+
+shader_uniform_value_set :: proc(name: string, kind: Uniform_Kind, value: rawptr) {
+
+	loc := ctx.loaded_shader.uniforms[name].location //TODO: Replace this with loaded shader
+	switch kind {
+	case .MATRIX_4:
+		_val := (cast(^matrix[4, 4]f32)value)^
+		gl.UniformMatrix4fv(loc, 1, false, &_val[0, 0])
+	case .VEC4_F32:
+		_val := (cast(^[4]f32)value)^
+		gl.Uniform4fv(loc, 1, raw_data(_val[:]))
+	case: panic(fmt.tprintfln("Unsupported Matrix type: %v", kind))
+	}
+
+}
+
+push_shader :: proc(id: u32) {
+	commit()
+	ctx.loaded_shader = ctx.shader_cache[id]
+	gl.UseProgram(ctx.loaded_shader.hndl)
+}
+
+pop_shader :: proc() {
+	commit()
+	ctx.loaded_shader = ctx.shader_cache[0]
+	gl.UseProgram(ctx.loaded_shader.hndl)
 }
 
 //TODO: parse and load uniforms

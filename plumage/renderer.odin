@@ -80,26 +80,17 @@ vertices_index_box := [?]Vertex {
 	{pos_coords = {-1.0,  1.0, 1.0}},
 }
 
-Render_Buffer :: enum u8 {
-	RECT,
-	CIRCLE,
-	TEXTURE,
-}
-
-
-Vert_Info :: struct {
-	pos:      [2]f32,
-	scale:    [2]f32,
-	rotation: f32,
-	radius:   f32,
-}
-
-//NOTE: This is getting large maybe we can make it smaller somehow
-//It's possible it's better still to do the maths on the cpu side and pass less as attributes?
 Vertex :: struct {
 	pos_coords:     [3]f32,
 	texture_coords: [2]f32,
 	colour:         [4]f32,
+}
+
+Rect :: struct {
+	x:      f32,
+	y:      f32,
+	height: f32,
+	width:  f32,
 }
 
 init :: proc(window_width, window_height: i32, name: cstring) {
@@ -127,7 +118,9 @@ init :: proc(window_width, window_height: i32, name: cstring) {
 	//TODO: These can't be freed (probably ok since they last the whole program
 	vs := #load("res/vert_2d.glsl")
 	fs := #load("res/frag_texture.glsl")
-	shader_load_from_mem(vs, fs)
+	ctx.loaded_shader = shader_load_from_mem(vs, fs)
+	gl.UseProgram(ctx.loaded_shader.hndl)
+
 
 
 	when 1 == 0 {
@@ -175,9 +168,10 @@ projection_set :: proc() {
 		-100.0,
 		100.0,
 	) */
-	gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0])
+	/* gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0]) */
+	shader_uniform_value_set("projection", .MATRIX_4, &projection[0, 0])
 	ctx.view_matrix = linalg.identity(matrix[4, 4]f32)
-	gl.UniformMatrix4fv(ctx.loaded_uniforms["view"].location, 1, false, &ctx.view_matrix[0, 0])
+	shader_uniform_value_set("view", .MATRIX_4, &ctx.view_matrix[0, 0])
 }
 
 debug_proc_t :: proc "c" (
@@ -529,6 +523,56 @@ push_rune :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.de
 	push_sprite_atlas(texture, {_pos.x, _pos.y}, {font_size, font_size}, {i32(normalized_offset), i32(index_y)}, colour = colour)
 }
 
+push_rune_2 :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
+	_pos := pos
+	texture: Ducc_Texture_Atlas = {
+		hndl = font.hndl,
+		data = font.data,
+		height = font.height,
+		width = font.width,
+		rows = font.rows,
+		cols = font.cols,
+		sprite_size = font.sprite_size,
+		mode        = gl.TRIANGLES
+	}
+	switch c {
+	case '\n':
+		_pos.y -= font_size
+	}
+
+		offset_c := i32(c) - font.offset //offset our character so it can be indexed into the array
+		adj_c := (offset_c * font.sprite_size)
+		x := math.abs(adj_c-font.width)
+		row_boundry := f32(font.sprite_size) / f32(font.width)
+		y := 60
+		/* y := font.sprite_size * () */
+		which_row := offset_c + (font.sprite_size * 1)
+		index_y    := offset_c / font.rows //find the row in our atlas from top to bottom
+		adj_cols := ((font.cols) * i32(index_y)) //find the starting point for the row in our imaginary flat array
+		normalized_offset := (i32(offset_c) - adj_cols) //normalize our char index to be 0 to (cols- 1) so we can index into the row
+		
+		/*
+		src := Rect {
+			x = 0 -> font.width
+			y = 0 -> font.height
+			width = x + font.sprite_size
+			hegiht = y + font.sprite_size
+		} */
+
+		/* src := Rect {
+			x = f32(normalized_offset) * f32(font.sprite_size),
+			y = f32(index_y) * f32(font.sprite_size),
+		} */
+
+		src := Rect {
+			x = f32(x),
+			y = f32(y),
+		}
+		src.width = f32(font.sprite_size)
+		src.height = f32(font.sprite_size)
+		push_sprite_atlas_custom(texture, {_pos.x, _pos.y}, {font_size, font_size}, src, colour = colour)
+}
+
 //////////////////////
 ////TC: TEXTURES
 //////////////////////
@@ -587,6 +631,35 @@ push_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32,
 
 }
 
+push_sprite_atlas_custom :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
+	assert(src.x <= f32(atlas.width))
+	assert(src.y <= f32(atlas.height))
+	if should_commit(atlas.hndl, atlas.mode) {
+		commit()
+	}
+	ctx.loaded_texture = Ducc_Texture {
+		data   = atlas.data,
+		height = i32(atlas.height),
+		width  = i32(atlas.width),
+		hndl   = atlas.hndl,
+		mode   = atlas.mode
+	}
+
+	start_x := src.x / f32(atlas.width)
+	start_y := src.y / f32(atlas.height)
+
+	end_x := (src.width  + src.x) / f32(atlas.width)
+	end_y := (src.height + src.y) / f32(atlas.height)
+	
+	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0},{end_x, start_y},     colour)
+	push_vertex({pos.x + scale.x, pos.y, 0.0},          {end_x, end_y},   colour)
+	push_vertex({pos.x, pos.y + scale.y, 0.0},          {start_x, start_y},   colour)
+	push_vertex({pos.x + scale.x, pos.y, 0.0},          {end_x, end_y},   colour)
+	push_vertex({pos.x, pos.y, 0.0},                    {start_x, end_y}, colour)
+	push_vertex({pos.x, pos.y + scale.y, 0.0},          {start_x, start_y},   colour)
+
+}
+
 //Read in some file name
 //Return back data about the texture
 sprite_load :: proc(data: []u8, width, height: int)  -> Ducc_Texture {
@@ -633,12 +706,29 @@ push_vertex :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotat
 	vertex.texture_coords = uv_coords
 	vertex.colour = colour_apply(colour)
 
-	gl.BufferSubData(
+	/* gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		int(ctx.batch_vertices_count) * size_of(Vertex),
 		size_of(Vertex),
 		&vertex,
-	)
+	) */
+
+	start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
+	(^Vertex)(&ctx.batch_vertices[start])^ = vertex
+
+	ctx.batch_vertices_count += 1
+}
+
+push_vertex_custom :: proc(vert_attributes: $T) {
+	/* gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		int(ctx.batch_vertices_count) * size_of(T),
+		size_of(T),
+		&vertex,
+	) */
+	start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
+	(^T)(&ctx.batch_vertices[start])^ = vert_attributes
+
 	ctx.batch_vertices_count += 1
 }
 
@@ -670,18 +760,24 @@ colour_apply_hex :: proc(colour: Color) -> [4]f32 {
 
 commit :: proc() {
 	if ctx.camera != nil {
-		gl.UniformMatrix4fv(ctx.loaded_uniforms["view"].location, 1, false, &ctx.view_matrix[0, 0])
+		shader_uniform_value_set("view", .MATRIX_4, &ctx.view_matrix[0, 0])
 	}
+
+	gl.BindVertexArray(ctx.loaded_shader.vao)
+	vb_data := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)
+	{
+		gpu_map := slice.from_ptr((^u8)(vb_data), DEFAULT_BUFF_SIZE)
+		copy(
+			gpu_map,
+			ctx.batch_vertices[:ctx.batch_vertices_count * size_of(Vertex)],
+		)
+	}
+	gl.UnmapBuffer(gl.ARRAY_BUFFER)
+
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.width, ctx.loaded_texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
 	gl.GenerateMipmap(gl.TEXTURE_2D)
-	/* blah := ctx.batch_vertices[:ctx.batch_vertices_count]
-	gl.BufferSubData(
-		gl.ARRAY_BUFFER,
-		int(ctx.batch_vertices_count) * size_of(Vertex),
-		size_of(ctx.batch_vertices[:ctx.batch_vertices_count]),
-		&blah,
-	) */
+
 	gl.DrawArrays(ctx.loaded_texture.mode, 0, ctx.batch_vertices_count)
 	ctx.batch_vertices_count = 0
 }
