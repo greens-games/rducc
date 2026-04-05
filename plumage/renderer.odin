@@ -7,10 +7,8 @@ import "core:image/bmp"
 import "core:image/png"
 
 import "core:mem"
-import "core:strings"
 import "base:runtime"
 import "core:slice"
-import stbi "vendor:stb/image"
 
 /**
 Table of Contents:
@@ -206,7 +204,7 @@ background_clear :: proc(color: Colour) {
 //////////////////////
 /////TC: SHAPES //////
 //////////////////////
-push_pixel :: proc(pos: [2]f32, colour: Colour) {
+pixel_push :: proc(pos: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.POINTS
 	if should_commit(texture.hndl, texture.mode) {
@@ -215,13 +213,13 @@ push_pixel :: proc(pos: [2]f32, colour: Colour) {
 
 	ctx.loaded_texture = texture
 
-	push_vertex({pos.x, pos.y, 0.0}, {1.0, 0.0}, colour)
+	vertex_push({pos.x, pos.y, 0.0}, {1.0, 0.0}, colour)
 }
 
 //TODO: Potentially temporary group as we want push_line_box to be go to I believe
 //Currently it makes the grid look cool but not right for most scenarios
 
-push_line_lines :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
+line_lines_push :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.LINES
 	if should_commit(texture.hndl, texture.mode) {
@@ -230,11 +228,11 @@ push_line_lines :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 
 	ctx.loaded_texture = texture
 
-	push_vertex({start.x, start.y, 0.0}, {1.0, 0.0}, colour)
-	push_vertex({end.x, end.y, 0.0},     {1.0, 1.0}, colour)
+	vertex_push({start.x, start.y, 0.0}, {1.0, 0.0}, colour)
+	vertex_push({end.x, end.y, 0.0},     {1.0, 1.0}, colour)
 }
 
-push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1) {
+line_push :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
 		commit()
@@ -247,19 +245,19 @@ push_line :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1
 	//TODO: To do proper rotation we would want to fix/change rotation of a box to have custom origin
 	rot := math.atan2(end.y - start.y, end.x - start.x)
 	/* linalg.normalize */
-	push_box({start.x, start.y}, {0, 0}, {l, thickness}, rot, colour)
+	box_push({start.x, start.y}, {0, 0}, {l, thickness}, rot, colour)
 }
 
 //NOTE: Trying out procedure groups here not sure if it's needed or too much
 //Trying to confine the logic here into 1 made the signature to long for the basic behaviour for my liking
-push_box :: proc{
-	push_box_base, push_box_rotate
+box_push :: proc{
+	box_base_push, box_rotate_push 
 }
 
 /*
 Basic box draw that does not rotate
 */
-push_box_base :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
+box_base_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
 		commit()
@@ -272,12 +270,12 @@ push_box_base :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 	top_right: Vec3 = {pos.x + scale.x, pos.y + scale.y, 0}
 	bot_right: Vec3 = {pos.x + scale.x, pos.y, 0}
 
-	push_vertex(top_right, {1.0, 0.0}, colour)
-	push_vertex(bot_right, {1.0, 1.0}, colour)
-	push_vertex(top_left,  {0.0, 0.0}, colour)
-	push_vertex(bot_right, {1.0, 1.0}, colour)
-	push_vertex(bot_left,  {0.0, 1.0}, colour)
-	push_vertex(top_left,  {0.0, 0.0}, colour)
+	vertex_push(top_right, {1.0, 0.0}, colour)
+	vertex_push(bot_right, {1.0, 1.0}, colour)
+	vertex_push(top_left,  {0.0, 0.0}, colour)
+	vertex_push(bot_right, {1.0, 1.0}, colour)
+	vertex_push(bot_left,  {0.0, 1.0}, colour)
+	vertex_push(top_left,  {0.0, 0.0}, colour)
 }
 
 /*
@@ -286,7 +284,7 @@ rotation is in degress i.e 45 degree angle
 {0, 0} origin is bottom left
 scale/2 origin is centre
 */
-push_box_rotate :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour) {
+box_rotate_push :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
 		commit()
@@ -327,36 +325,36 @@ push_box_rotate :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour
 		0.0,
 	}
 
-	push_vertex(top_right, {1.0, 0.0}, colour, rotation)
-	push_vertex(bot_right, {1.0, 1.0}, colour, rotation)
-	push_vertex(top_left,  {0.0, 0.0}, colour, rotation)
-	push_vertex(bot_right, {1.0, 1.0}, colour, rotation)
-	push_vertex(bot_left,  {0.0, 1.0}, colour, rotation)
-	push_vertex(top_left,  {0.0, 0.0}, colour, rotation)
+	vertex_push(top_right, {1.0, 0.0}, colour, rotation)
+	vertex_push(bot_right, {1.0, 1.0}, colour, rotation)
+	vertex_push(top_left,  {0.0, 0.0}, colour, rotation)
+	vertex_push(bot_right, {1.0, 1.0}, colour, rotation)
+	vertex_push(bot_left,  {0.0, 1.0}, colour, rotation)
+	vertex_push(top_left,  {0.0, 0.0}, colour, rotation)
 }
 
-push_box_lines :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+box_lines_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 
-	push_line(pos, pos + {scale.x, 0}, colour)
-	push_line(pos + {scale.x, 0}, pos + scale, colour)
-	push_line(pos + scale, pos + {0, scale.y}, colour)
-	push_line(pos + {0, scale.y}, pos, colour)
+	line_push(pos, pos + {scale.x, 0}, colour)
+	line_push(pos + {scale.x, 0}, pos + scale, colour)
+	line_push(pos + scale, pos + {0, scale.y}, colour)
+	line_push(pos + {0, scale.y}, pos, colour)
 
 }
 
-push_box_lines2 :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+box_lines2_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 
-	push_line(pos, pos + {scale.x, 0}, colour)
-	push_line(pos + {scale.x, 0}, pos + scale, colour)
-	push_line(pos + scale, pos + {0, scale.y}, colour)
-	push_line(pos + {0, scale.y}, pos, colour)
+	line_push(pos, pos + {scale.x, 0}, colour)
+	line_push(pos + {scale.x, 0}, pos + scale, colour)
+	line_push(pos + scale, pos + {0, scale.y}, colour)
+	line_push(pos + {0, scale.y}, pos, colour)
 
 }
 
 
 //NOTE: Possible issue here is that all our other draws are bottom left origins, this is center
 //However this is much better for accuracy when scaling up currently
-push_circle :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+circle_push :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.TRIANGLES
 	if should_commit(texture.hndl, texture.mode) {
@@ -367,26 +365,26 @@ push_circle :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotation: f32
 
 	two_pi := 2.0 * math.PI
 
-	centre_x := pos.x + (diameter.x/2 * math.cos_f32(0))
-	centre_y := pos.y + (diameter.y/2 * math.sin_f32(0))
+	centre_x := pos.x + (radius.x * math.cos_f32(0))
+	centre_y := pos.y + (radius.y * math.sin_f32(0))
 	centre := [3]f32{centre_x, centre_y, 0.0}
 
-	prev := centre + f32(diameter.x/2)
+	prev := centre + f32(radius.x)
 
 	for i in 0..=CIRCLE_SEGMENTS {
 		circ_pos := f32(f64(i) * two_pi / f64(CIRCLE_SEGMENTS))
-		x := pos.x + (diameter.x/2 * math.cos_f32(circ_pos))
-		y := pos.y + (diameter.y/2 * math.sin_f32(circ_pos))
+		x := pos.x + (radius.x * math.cos_f32(circ_pos))
+		y := pos.y + (radius.y * math.sin_f32(circ_pos))
 		z: f32 = 0.0
 		curr := [3]f32{x, y, z}
-		push_vertex(curr, {0,0}, colour)
-		push_vertex(centre, {0,0}, colour)
-		push_vertex(prev, {0,0}, colour)
+		vertex_push(curr, {0,0}, colour)
+		vertex_push(centre, {0,0}, colour)
+		vertex_push(prev, {0,0}, colour)
 		prev = curr
 	}
 }
 
-push_polygon :: proc(pos: [2]f32, size: [2]f32, sides: int, colour: Colour, rotation: f32 = 0.0) {
+polygon_push :: proc(pos: [2]f32, size: [2]f32, sides: int, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.TRIANGLES
 	if should_commit(texture.hndl, texture.mode) {
@@ -409,15 +407,15 @@ push_polygon :: proc(pos: [2]f32, size: [2]f32, sides: int, colour: Colour, rota
 		y := pos.y + (size.y/2 * math.sin_f32(circ_pos))
 		z: f32 = 0.0
 		curr := [3]f32{x, y, z}
-		push_vertex(curr, {0,0}, colour)
-		push_vertex(centre, {0,0}, colour)
-		push_vertex(prev, {0,0}, colour)
+		vertex_push(curr, {0,0}, colour)
+		vertex_push(centre, {0,0}, colour)
+		vertex_push(prev, {0,0}, colour)
 		prev = curr
 	}
 }
 
 //TODO: This is missing 1 segment at the end?
-push_circle_lines :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+circle_lines_push :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.TRIANGLE_FAN
 	if should_commit(texture.hndl, texture.mode) {
@@ -431,19 +429,19 @@ push_circle_lines :: proc(pos: [2]f32, diameter: [2]f32, colour: Colour, rotatio
 	prev: [2]f32
 	curr: [2]f32
 	circ_pos := f32(f64(1) * two_pi / f64(CIRCLE_SEGMENTS))
-	x := pos.x + (diameter.x/2 * math.cos_f32(circ_pos))
-	y := pos.y + (diameter.y/2 * math.sin_f32(circ_pos))
+	x := pos.x + (radius.x * math.cos_f32(circ_pos))
+	y := pos.y + (radius.y * math.sin_f32(circ_pos))
 	prev = {x, y}
 	first := [2]f32{x, y}
 	for i in 2..=CIRCLE_SEGMENTS {
 		circ_pos := f32(f64(i) * two_pi / f64(CIRCLE_SEGMENTS))
-		x = pos.x + (diameter.x/2 * math.cos_f32(circ_pos))
-		y = pos.y + (diameter.y/2 * math.sin_f32(circ_pos))
+		x = pos.x + (radius.x * math.cos_f32(circ_pos))
+		y = pos.y + (radius.y * math.sin_f32(circ_pos))
 		curr = [2]f32{x, y}
-		push_line(prev, curr, colour)
+		line_push(prev, curr, colour)
 		prev = curr
 	}
-	push_line(prev, first, colour)
+	line_push(prev, first, colour)
 }
 
 //////////////////////
@@ -475,7 +473,7 @@ take in a loaded font, line of text, position, font_size, and colour
 currently maps the font to a texture atlas and calls the renderer's texture atlas draw proc
 */
 //TODO: This requires the bitmap to be a square rows == cols
-push_text :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
+text_push :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
 	_pos := pos
 	texture: Ducc_Texture_Atlas = {
 		hndl = font.hndl,
@@ -495,12 +493,12 @@ push_text :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = c
 			i = 0
 			continue
 		}
-		push_rune(c, {_pos.x + f32((i32(i) * i32(font_size))), _pos.y}, font_size, font, colour = colour)
+		rune_push(c, {_pos.x + f32((i32(i) * i32(font_size))), _pos.y}, font_size, font, colour = colour)
 		i += 1
 	}
 }
 
-push_rune :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
+rune_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
 	_pos := pos
 	texture: Ducc_Texture_Atlas = {
 		hndl = font.hndl,
@@ -520,10 +518,10 @@ push_rune :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.de
 	index_y    := offset_c / font.rows //find the row in our atlas from top to bottom
 	adj_cols := ((font.cols) * i32(index_y)) //find the starting point for the row in our imaginary flat array
 	normalized_offset := (i32(offset_c) - adj_cols) //normalize our char index to be 0 to (cols- 1) so we can index into the row
-	push_sprite_atlas(texture, {_pos.x, _pos.y}, {font_size, font_size}, {i32(normalized_offset), i32(index_y)}, colour = colour)
+	sprite_atlas_index_push(texture, {_pos.x, _pos.y}, {font_size, font_size}, {i32(normalized_offset), i32(index_y)}, colour = colour)
 }
 
-push_rune_2 :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
+rune_2_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
 	_pos := pos
 	texture: Ducc_Texture_Atlas = {
 		hndl = font.hndl,
@@ -570,7 +568,7 @@ push_rune_2 :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.
 		}
 		src.width = f32(font.sprite_size)
 		src.height = f32(font.sprite_size)
-		push_sprite_atlas_custom(texture, {_pos.x, _pos.y}, {font_size, font_size}, src, colour = colour)
+		sprite_atlas_push(texture, {_pos.x, _pos.y}, {font_size, font_size}, src, colour = colour)
 }
 
 //////////////////////
@@ -601,7 +599,7 @@ sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Du
 //i.e 0,0 will be top left. atlas.rows - 1, atlas.cols - 1 will be bottom right
 //TODO: For non stb loaded images this is upside down
 //TODO: Instead of using indices for getting the texture should use sizes
-push_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, index: [2]i32, rotation: f32 = 0.0, colour: Colour = WHITE) {
+sprite_atlas_index_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, index: [2]i32, rotation: f32 = 0.0, colour: Colour = WHITE) {
 	if should_commit(atlas.hndl, atlas.mode) {
 		commit()
 	}
@@ -622,16 +620,16 @@ push_sprite_atlas :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32,
 	y_offset_minus_one := f32(index.y + 1) * row_offset
 	x_offset := f32(index.x) * col_offset
 	x_offset_plus_one := f32(index.x + 1) * col_offset
-	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0},{x_offset_plus_one, y_offset}, colour)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},{x_offset_plus_one, y_offset_minus_one}, colour)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},{x_offset, y_offset}, colour)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},{x_offset_plus_one, y_offset_minus_one}, colour)
-	push_vertex({pos.x, pos.y, 0.0},{x_offset, y_offset_minus_one}, colour)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},{x_offset, y_offset}, colour)
+	vertex_push({pos.x + scale.x, pos.y + scale.y, 0.0},{x_offset_plus_one, y_offset}, colour)
+	vertex_push({pos.x + scale.x, pos.y, 0.0},{x_offset_plus_one, y_offset_minus_one}, colour)
+	vertex_push({pos.x, pos.y + scale.y, 0.0},{x_offset, y_offset}, colour)
+	vertex_push({pos.x + scale.x, pos.y, 0.0},{x_offset_plus_one, y_offset_minus_one}, colour)
+	vertex_push({pos.x, pos.y, 0.0},{x_offset, y_offset_minus_one}, colour)
+	vertex_push({pos.x, pos.y + scale.y, 0.0},{x_offset, y_offset}, colour)
 
 }
 
-push_sprite_atlas_custom :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
+sprite_atlas_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
 	if should_commit(atlas.hndl, atlas.mode) {
@@ -651,12 +649,12 @@ push_sprite_atlas_custom :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: 
 	end_x := (src.width  + src.x) / f32(atlas.width)
 	end_y := (src.height + src.y) / f32(atlas.height)
 	
-	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0},{end_x, start_y},     colour)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},          {end_x, end_y},   colour)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},          {start_x, start_y},   colour)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},          {end_x, end_y},   colour)
-	push_vertex({pos.x, pos.y, 0.0},                    {start_x, end_y}, colour)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},          {start_x, start_y},   colour)
+	vertex_push({pos.x + scale.x, pos.y + scale.y, 0.0},{end_x, start_y},     colour)
+	vertex_push({pos.x + scale.x, pos.y, 0.0},          {end_x, end_y},   colour)
+	vertex_push({pos.x, pos.y + scale.y, 0.0},          {start_x, start_y},   colour)
+	vertex_push({pos.x + scale.x, pos.y, 0.0},          {end_x, end_y},   colour)
+	vertex_push({pos.x, pos.y, 0.0},                    {start_x, end_y}, colour)
+	vertex_push({pos.x, pos.y + scale.y, 0.0},          {start_x, start_y},   colour)
 
 }
 
@@ -680,7 +678,7 @@ sprite_load :: proc(data: []u8, width, height: int)  -> Ducc_Texture {
 }
 
 //Takes in position data, and texture data to be drawn
-push_sprite :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation: f32 = 0.0, flip := [2]bool{}, colour := WHITE) {
+sprite_push :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation: f32 = 0.0, flip := [2]bool{}, colour := WHITE) {
 	if (ctx.loaded_texture.hndl != 0 && texture.hndl != ctx.loaded_texture.hndl) {
 		commit()
 	}
@@ -689,53 +687,67 @@ push_sprite :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation:
 
 	//TODO: This doesn't sit well with me 
 	//	flip{false, false} == sprite is right side up
-	push_vertex({pos.x + scale.x, pos.y + scale.y, 0.0}, {f32(i32(!flip.x)), 0.0}, colour)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},           {f32(i32(!flip.x)), 1.0}, colour)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},           {f32(i32(flip.x)), 0.0}, colour)
-	push_vertex({pos.x + scale.x, pos.y, 0.0},           {f32(i32(!flip.x)), 1.0}, colour)
-	push_vertex({pos.x, pos.y, 0.0},                     {f32(i32(flip.x)), 1.0}, colour)
-	push_vertex({pos.x, pos.y + scale.y, 0.0},           {f32(i32(flip.x)), 0.0}, colour)
+	vertex_push({pos.x + scale.x, pos.y + scale.y, pos.y},
+		        {f32(i32(!flip.x)), 0.0}, colour)
+
+	vertex_push({pos.x + scale.x, pos.y, pos.y},
+			    {f32(i32(!flip.x)), 1.0}, colour)
+
+	vertex_push({pos.x, pos.y + scale.y, pos.y},
+		        {f32(i32(flip.x)), 0.0}, colour)
+
+	vertex_push({pos.x + scale.x, pos.y, pos.y},
+		        {f32(i32(!flip.x)), 1.0}, colour)
+	
+	vertex_push({pos.x, pos.y,           pos.y},
+		        {f32(i32(flip.x)), 1.0}, colour)
+
+	vertex_push({pos.x, pos.y + scale.y, pos.y},
+		        {f32(i32(flip.x)), 0.0}, colour)
 }
 
 //////////////////////
 /////TC: UTILS ///////
 //////////////////////
-push_vertex :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+vertex_push :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	vertex: Vertex
 	vertex.pos_coords = pos_coords
 	vertex.texture_coords = uv_coords
 	vertex.colour = colour_apply(colour)
 
-	/* gl.BufferSubData(
+	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		int(ctx.batch_vertices_count) * size_of(Vertex),
 		size_of(Vertex),
 		&vertex,
-	) */
+	)
 
-	start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
-	(^Vertex)(&ctx.batch_vertices[start])^ = vertex
+	//NOTE: this appears to be slower at based solely on monitoring fps (surface level)
+	/* start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
+	(^Vertex)(&ctx.batch_vertices[start])^ = vertex */
 
 	ctx.batch_vertices_count += 1
 }
 
-push_vertex_custom :: proc(vert_attributes: $T) {
-	/* gl.BufferSubData(
+vertex_custom_push :: proc(vert_attributes: $T) {
+	gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		int(ctx.batch_vertices_count) * size_of(T),
 		size_of(T),
 		&vertex,
-	) */
-	start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
-	(^T)(&ctx.batch_vertices[start])^ = vert_attributes
+	)
+	/* start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
+	(^T)(&ctx.batch_vertices[start])^ = vert_attributes */
 
 	ctx.batch_vertices_count += 1
 }
 
 @(private)
 should_commit :: proc(hndl: u32, mode: u32) -> bool {
-	return (ctx.loaded_texture.hndl != 0 && hndl != ctx.loaded_texture.hndl) ||
-			(ctx.loaded_texture.mode != 0 && ctx.loaded_texture.mode != mode)
+	if ctx.batch_vertices_count * ctx.loaded_shader.vertex_size >= DEFAULT_BUFF_SIZE { return true }
+	if ctx.loaded_texture.hndl != 0 && hndl != ctx.loaded_texture.hndl { return true }
+	if ctx.loaded_texture.mode != 0 && ctx.loaded_texture.mode != mode { return true }
+	return false
 }
 
 @(private)
@@ -759,12 +771,15 @@ colour_apply_hex :: proc(colour: Color) -> [4]f32 {
 }
 
 commit :: proc() {
+	if ctx.batch_vertices_count == 0 { return }
 	if ctx.camera != nil {
 		shader_uniform_value_set("view", .MATRIX_4, &ctx.view_matrix[0, 0])
 	}
 
 	gl.BindVertexArray(ctx.loaded_shader.vao)
-	vb_data := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)
+
+	//NOTE: this appears to be slower at based solely on monitoring fps (surface level)
+	/* vb_data := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)
 	{
 		gpu_map := slice.from_ptr((^u8)(vb_data), DEFAULT_BUFF_SIZE)
 		copy(
@@ -772,7 +787,7 @@ commit :: proc() {
 			ctx.batch_vertices[:ctx.batch_vertices_count * size_of(Vertex)],
 		)
 	}
-	gl.UnmapBuffer(gl.ARRAY_BUFFER)
+	gl.UnmapBuffer(gl.ARRAY_BUFFER) */
 
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.width, ctx.loaded_texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
@@ -780,7 +795,4 @@ commit :: proc() {
 
 	gl.DrawArrays(ctx.loaded_texture.mode, 0, ctx.batch_vertices_count)
 	ctx.batch_vertices_count = 0
-}
-
-vertex_attrib_apply :: proc() {
 }

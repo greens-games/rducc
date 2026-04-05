@@ -47,7 +47,7 @@ Context :: struct {
 	default_font:         Ducc_Font,
 
 	//TODO: Maybe this should 
-	camera:               Maybe(Camera_2D),
+	camera:               ^Camera_2D,
 	view_matrix:          matrix[4, 4]f32,
 }
 

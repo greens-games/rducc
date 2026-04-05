@@ -15,6 +15,7 @@ Attribute_Kind :: enum {
 Uniform_Kind :: enum {
 	MATRIX_4,
 	VEC4_F32,
+	F32,
 }
 
 Var_Type :: union {
@@ -145,6 +146,10 @@ shader_uniform_value_set :: proc(name: string, kind: Uniform_Kind, value: rawptr
 	case .VEC4_F32:
 		_val := (cast(^[4]f32)value)^
 		gl.Uniform4fv(loc, 1, raw_data(_val[:]))
+	case .F32: 
+		_val := (cast(^f32)value)^
+		gl.Uniform1f(loc, _val)
+		/* gl.Uniform1i(loc, _val) */
 	case: panic(fmt.tprintfln("Unsupported Matrix type: %v", kind))
 	}
 

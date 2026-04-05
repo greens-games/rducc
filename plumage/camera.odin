@@ -27,10 +27,10 @@ camera_init :: proc(target: [2]f32, zoom: f32) -> Camera_2D {
 REQUIRED to start using a camera for a given chunk of draws
 centres camera on 'target', and applies a view translation to all things drawn withing the camera begin and camera end
 */
-camera_begin :: proc(camera: Camera_2D) {
+camera_begin :: proc(camera: ^Camera_2D) {
 	commit()
 	ctx.camera = camera
-	c := ctx.camera.(Camera_2D)
+	c := ctx.camera
 	inv_target_translate := linalg.matrix4_translate_f32({-c.target.x, -c.target.y, 0})
 	/* inv_rot := linalg.matrix4_rotate_f32(c.rotation, {0, 0, 1}) */
 	inv_scale := linalg.matrix4_scale_f32({c.zoom, c.zoom, 1})
@@ -46,8 +46,8 @@ Commits the batch to ensure it's flushed
 Resets to identity matrix for default vert shader
 */
 camera_end :: proc() {
-	gl.UniformMatrix4fv(ctx.loaded_uniforms["view"].location, 1, false, &ctx.view_matrix[0, 0])
+	shader_uniform_value_set("view", .MATRIX_4, &ctx.view_matrix[0, 0])
 	commit()
 	ctx.view_matrix = linalg.identity(matrix[4, 4]f32)
-	gl.UniformMatrix4fv(ctx.loaded_uniforms["view"].location, 1, false, &ctx.view_matrix[0, 0])
+	shader_uniform_value_set("view", .MATRIX_4, &ctx.view_matrix[0, 0])
 }

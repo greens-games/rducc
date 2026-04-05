@@ -187,7 +187,7 @@ run :: proc() {
 		for index in 0..<min(constants.bullet_count, constants.bullet_cap) {
 			b := bullets[index]
 			if b.alive {
-				plumage.push_circle(b.pos, b.scale, plumage.RED)
+				plumage.circle_push(b.pos, b.scale, plumage.RED)
 			}
 		}
 		for index in 0..<entity_count {
@@ -197,21 +197,21 @@ run :: proc() {
 			}
 			switch thing.kind {
 			case .PLAYER:
-				plumage.push_sprite(loaded_textures[thing.texture_hndl], player.pos, player.scale, flip = {thing.direction != 1, false})
+				plumage.sprite_push(loaded_textures[thing.texture_hndl], player.pos, player.scale, flip = {thing.direction != 1, false})
 			case .ENEMY:
-				plumage.push_sprite(loaded_textures[thing.texture_hndl], thing.pos, thing.scale)
+				plumage.sprite_push(loaded_textures[thing.texture_hndl], thing.pos, thing.scale)
 			case .PLATFORM:
-				plumage.push_box(thing.pos, thing.scale, plumage.BLACK)
+				plumage.box_push(thing.pos, thing.scale, plumage.BLACK)
 			case .PROJECTILE:
 			case .GOAL:
-				plumage.push_box(thing.pos, thing.scale, plumage.YELLOW)
+				plumage.box_push(thing.pos, thing.scale, plumage.YELLOW)
 			case .PARTICLE:
-				plumage.push_sprite(loaded_textures[thing.texture_hndl], thing.pos, thing.scale, colour = thing.colour)
+				plumage.sprite_push(loaded_textures[thing.texture_hndl], thing.pos, thing.scale, colour = thing.colour)
 			}
 		}
 
 		if constants.curr_level == .V {
-			plumage.push_text("Will you be my Valentine?\n<3", {21 * CELL_SIZE, 3 * CELL_SIZE}, 32)
+			plumage.text_push("Will you be my Valentine?\n<3", {21 * CELL_SIZE, 3 * CELL_SIZE}, 32)
 		}
 
 		if debug_mode {
@@ -220,11 +220,11 @@ run :: proc() {
 				entity := entities[index]
 				switch entity.kind {
 				case .PLAYER:
-					plumage.push_box_lines(player.collider.origin, player.scale, plumage.BLUE)
+					plumage.box_lines_push(player.collider.origin, player.scale, plumage.BLUE)
 				case .ENEMY:
-					plumage.push_box_lines(entity.collider.origin, entity.scale, plumage.BLUE)
+					plumage.box_lines_push(entity.collider.origin, entity.scale, plumage.BLUE)
 				case .PLATFORM:
-					plumage.push_box_lines(entity.collider.origin, entity.scale, plumage.BLUE)
+					plumage.box_lines_push(entity.collider.origin, entity.scale, plumage.BLUE)
 				case .PROJECTILE:
 				case .GOAL:
 				case .PARTICLE:
@@ -236,10 +236,10 @@ run :: proc() {
 				entity := entities[index]
 				origin := entity.collider.origin
 				point_size: f32 = 4
-				plumage.push_box({origin.x - point_size, origin.y + entity.scale.y/2}, {point_size, point_size}, plumage.BLUE)
-				plumage.push_box({origin.x + entity.scale.x/2, origin.y - point_size}, {point_size, point_size}, plumage.BLUE)
-				plumage.push_box({origin.x + entity.scale.x, origin.y + entity.scale.y/2}, {point_size, point_size}, plumage.BLUE)
-				plumage.push_box({origin.x + entity.scale.x/2, origin.y + entity.scale.y}, {point_size, point_size}, plumage.BLUE)
+				plumage.box_push({origin.x - point_size, origin.y + entity.scale.y/2}, {point_size, point_size}, plumage.BLUE)
+				plumage.box_push({origin.x + entity.scale.x/2, origin.y - point_size}, {point_size, point_size}, plumage.BLUE)
+				plumage.box_push({origin.x + entity.scale.x, origin.y + entity.scale.y/2}, {point_size, point_size}, plumage.BLUE)
+				plumage.box_push({origin.x + entity.scale.x/2, origin.y + entity.scale.y}, {point_size, point_size}, plumage.BLUE)
 			}
 			if debug_active_entity > -1 {
 				thing := entities[debug_active_entity]
@@ -257,9 +257,9 @@ run :: proc() {
 				anim_frame = 0
 			}
 		}
-		plumage.push_sprite_atlas(sword_anim, {21 * CELL_SIZE, 6 * CELL_SIZE}, {CELL_SIZE, CELL_SIZE}, {anim_frame, 0})
-		plumage.push_text(fmt.tprintf("FPS: %d",fps),{0, 31 * CELL_SIZE}, 14)
-		plumage.push_text(fmt.tprintf("Frame Time: %.2f(ms)", dt * 1000),{0, 30 * CELL_SIZE}, 14)
+		plumage.sprite_atlas_index_push(sword_anim, {21 * CELL_SIZE, 6 * CELL_SIZE}, {CELL_SIZE, CELL_SIZE}, {anim_frame, 0})
+		plumage.text_push(fmt.tprintf("FPS: %d",fps),{0, 31 * CELL_SIZE}, 14)
+		plumage.text_push(fmt.tprintf("Frame Time: %.2f(ms)", dt * 1000),{0, 30 * CELL_SIZE}, 14)
 
 		plumage.commit()
 
@@ -306,17 +306,17 @@ draw_grid :: proc() {
 
 	buf := [?]byte{0, 1}
 	for r in 1..=rows {
-		plumage.push_line({0.0, 32 * r}, {cols * 32, 32 * r}, plumage.RED)
+		plumage.line_push({0.0, 32 * r}, {cols * 32, 32 * r}, plumage.RED)
 	}
 	for c in 1..=cols {
-		plumage.push_line({32 * c, 0.0}, {c * 32, 32 * rows}, plumage.RED)
+		plumage.line_push({32 * c, 0.0}, {c * 32, 32 * rows}, plumage.RED)
 	}
 
 	for r in 1..=rows {
-		plumage.push_text(strconv.write_int(buf[:], i64(r), 10), {0.0, 32 * r}, 10)
+		plumage.text_push(strconv.write_int(buf[:], i64(r), 10), {0.0, 32 * r}, 10)
 	}
 	for c in 1..=cols {
-		plumage.push_text(strconv.write_int(buf[:], i64(c), 10), {32 * c, 0.0}, 10)
+		plumage.text_push(strconv.write_int(buf[:], i64(c), 10), {32 * c, 0.0}, 10)
 	}
 }
 

@@ -136,138 +136,6 @@ when 1 == 1 {
 	}
 }
 
-when 1 == 0 {
-	Key :: enum {
-		KEY_SPACE         ,
-		KEY_APOSTROPHE    ,
-		KEY_COMMA         ,
-		KEY_MINUS         ,
-		KEY_PERIOD        ,
-		KEY_SLASH         ,
-		KEY_SEMICOLON     ,
-		KEY_EQUAL         ,
-		KEY_LEFT_BRACKET  ,
-		KEY_BACKSLASH     ,
-		KEY_RIGHT_BRACKET ,
-		KEY_GRAVE_ACCENT  , // `
-		KEY_WORLD_1       ,
-		KEY_WORLD_2       ,
-		/* Alphanumeric characters */
-		KEY_0			  ,
-		KEY_1			  ,
-		KEY_2			  ,
-		KEY_3			  ,
-		KEY_4			  ,
-		KEY_5			  ,
-		KEY_6			  ,
-		KEY_7			  ,
-		KEY_8			  ,
-		KEY_9			  ,
-		KEY_A			  ,
-		KEY_B			  ,
-		KEY_C			  ,
-		KEY_D			  ,
-		KEY_E			  ,
-		KEY_F			  ,
-		KEY_G			  ,
-		KEY_H			  ,
-		KEY_I			  ,
-		KEY_J			  ,
-		KEY_K			  ,
-		KEY_L			  ,
-		KEY_M			  ,
-		KEY_N			  ,
-		KEY_O			  ,
-		KEY_P			  ,
-		KEY_Q			  ,
-		KEY_R			  ,
-		KEY_S			  ,
-		KEY_T			  ,
-		KEY_U			  ,
-		KEY_V			  ,
-		KEY_W			  ,
-		KEY_X			  ,
-		KEY_Y			  ,
-		KEY_Z			  ,
-		/* Named non-printable keys */
-		KEY_ESCAPE        ,
-		KEY_ENTER         ,
-		KEY_TAB           ,
-		KEY_BACKSPACE     ,
-		KEY_INSERT        ,
-		KEY_DELETE        ,
-		KEY_RIGHT         ,
-		KEY_LEFT          ,
-		KEY_DOWN          ,
-		KEY_UP            ,
-		KEY_PAGE_UP       ,
-		KEY_PAGE_DOWN     ,
-		KEY_HOME          ,
-		KEY_END           ,
-		KEY_CAPS_LOCK     ,
-		KEY_SCROLL_LOCK   ,
-		KEY_NUM_LOCK      ,
-		KEY_PRINT_SCREEN  ,
-		Key_pause         ,
-		/* function keys */
-		KEY_F1			  ,
-		KEY_F2			  ,
-		KEY_F3			  ,
-		KEY_F4			  ,
-		KEY_F5			  ,
-		KEY_F6			  ,
-		KEY_F7			  ,
-		KEY_F8			  ,
-		KEY_F9			  ,
-		KEY_F10			  ,
-		KEY_F11			  ,
-		KEY_F12			  ,
-		KEY_F13			  ,
-		KEY_F14			  ,
-		KEY_F15			  ,
-		KEY_F16			  ,
-		KEY_F17			  ,
-		KEY_F18			  ,
-		KEY_F19			  ,
-		KEY_F20			  ,
-		KEY_F21			  ,
-		KEY_F22			  ,
-		KEY_F23			  ,
-		KEY_F24			  ,
-		KEY_F25			  ,
-		/* Keypad numbers */
-		KEY_KP_0		  ,
-		KEY_KP_1		  ,
-		KEY_KP_2		  ,
-		KEY_KP_3		  ,
-		KEY_KP_4		  ,
-		KEY_KP_5		  ,
-		KEY_KP_6		  ,
-		KEY_KP_7		  ,
-		KEY_KP_8		  ,
-		KEY_KP_9		  ,
-		/* Keypad named function keys */
-		KEY_KP_DECIMAL    ,
-		KEY_KP_DIVIDE     ,
-		KEY_KP_MULTIPLY   ,
-		KEY_KP_SUBTRACT   ,
-		KEY_KP_ADD        ,
-		KEY_KP_ENTER      ,
-		KEY_KP_EQUAL      ,
-		/* Modifier keys */
-		KEY_LEFT_SHIFT    ,
-		KEY_LEFT_CONTROL  ,
-		KEY_LEFT_ALT      ,
-		KEY_LEFT_SUPER    ,
-		KEY_RIGHT_SHIFT   ,
-		KEY_RIGHT_CONTROL ,
-		KEY_RIGHT_ALT     ,
-		KEY_RIGHT_SUPER   ,
-		KEY_MENU          ,
-		COUNT             ,
-	}
-}
-
 Mouse_Button :: enum {
 	MOUSE_BUTTON_LEFT   = 0,
 	MOUSE_BUTTON_RIGHT  = 1,
@@ -307,11 +175,12 @@ window_is_key_down_2 :: proc(key: Key) -> bool {
 window_is_key_pressed :: proc(key: Key) -> bool {
 	key_state := ctx.key_input_queue[key]
 	//NOTE: This only accounts for DOWN > UP may want to deal with REPEAT > UP if our holding a button
-	if key_state.curr_state == .DOWN && key_state.prev_state == .UP {
+	/* if key_state.curr_state == .DOWN && key_state.prev_state == .UP {
 		 ctx.key_input_queue[key].prev_state = .DOWN
 		return true
 	}
-	return false
+	return false */
+	return ctx.key_input_queue[key].pressed
 	/* return ctx.key_input_queue[key].pressed */
 }
 
@@ -356,7 +225,7 @@ key_callback :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods
 	ctx.key_input_queue[key].prev_state = ctx.key_input_queue[key].curr_state
 	ctx.key_input_queue[key].curr_state = Input_Kind(action)
 
-	ctx.key_input_queue[key].pressed = Input_Kind(action) == .DOWN
+	ctx.key_input_queue[key].pressed = Input_Kind(action) == .DOWN && !(Input_Kind(action) == .REPEAT)
 	ctx.key_input_queue[key].held = Input_Kind(action) == .DOWN || Input_Kind(action) == .REPEAT
 }
 

@@ -3,6 +3,10 @@ package waddle
 import "core:math"
 import "core:fmt"
 
+Interface :: struct($T: typeid){
+	validate_cell: proc(ctx: T, pos: [2]f32) -> bool,
+}
+
 Node :: struct {
 	id: i32,
 	data: [2]i32,
@@ -33,6 +37,7 @@ dijkstras_bfs :: proc(start, goal: [2]i32, grid: [][]i32) {
 		unordered_remove(&unvisited, shorest_index)
 		append(&visited, temp_point)
 
+		//NOTE: Make this part of interface?
 		left  := [2]i32{temp_point.data.x + 1, temp_point.data.y}
 		down  := [2]i32{temp_point.data.x, temp_point.data.y + 1}
 		up    := [2]i32{temp_point.data.x, temp_point.data.y - 1}
@@ -45,7 +50,7 @@ dijkstras_bfs :: proc(start, goal: [2]i32, grid: [][]i32) {
 	}
 
 	goal_index := find_pos(goal, visited)
-	path := make_dynamic_array([dynamic][2]i32)
+	path := make_dynamic_array([dynamic][2]i32, context.temp_allocator)
 	defer delete(path)
 	if goal_index > -1 {
 		curr_node := visited[goal_index]

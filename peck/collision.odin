@@ -1,7 +1,6 @@
 package peck
 
 import "core:math"
-import "core:fmt"
 
 Collider_Kind :: enum {
 	RECT,
@@ -28,12 +27,38 @@ circle_collision :: proc(a, b: Collider) -> bool {
 	dist_x := a.origin.x - b.origin.x
 	dist_y := a.origin.y - b.origin.y
 	dist := math.sqrt((dist_x * dist_x) + (dist_y * dist_y))
-	collide_radius := max(a.radius, b.radius)
-	return dist <= collide_radius
+	return dist <= math.max(a.radius, b.radius)
 }
 
+//NOTE: Yoinked from https://www.jeffreythompson.org/collision-detection/circle-rect.php
 circle_rect_collision :: proc(rect, circle: Collider) -> bool {
 	assert(rect.kind == .RECT && circle.kind == .CIRCLE, "First arg must be RECT Collider and second arg must both be CIRCLE Collider")
+	// temporary variables to set edges for testing
+	testX := circle.origin.x
+	testY := circle.origin.y
 
+	// which edge is closest?
+	if (circle.origin.x < rect.origin.x) {
+		testX = rect.origin.x
+	}      // test left edge
+	else if (circle.origin.x > rect.origin.x+rect.scale.x) {
+		testX = rect.origin.x+rect.scale.x
+	}   // right edge
+	if (circle.origin.y < rect.origin.y) {
+		testY = rect.origin.y
+	}      // top edge
+	else if (circle.origin.y > rect.origin.y+rect.scale.y) {
+		testY = rect.origin.y+rect.scale.y
+	}   // bottom edge
+
+	// get distance from closest edges
+	distX := circle.origin.x-testX;
+	distY := circle.origin.y-testY;
+	distance := math.sqrt( (distX*distX) + (distY*distY) );
+
+	// if the distance is less than the radius, collision!
+	if (distance <= circle.radius) {
+		return true;
+	}
 	return false
 }

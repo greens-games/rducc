@@ -32,8 +32,8 @@ debug_entity_box :: proc(pos: [2]f32, $E: typeid, data: rawptr, colour: plumage.
 		232,
 		f32(9 * i32(font_size))}
 
-	plumage.push_box(pos, box_size, colour = colour)
-	plumage.push_box_lines(pos, box_size, plumage.RED)
+	plumage.box_push(pos, box_size, colour = colour)
+	plumage.box_lines_push(pos, box_size, plumage.RED)
 
 	info := type_info_of(E)
 	more_info := runtime.type_info_core(info)
@@ -57,5 +57,5 @@ debug_entity_box :: proc(pos: [2]f32, $E: typeid, data: rawptr, colour: plumage.
 			strings.write_string(&sb, s)
 		}
 	}
-	plumage.push_text(strings.to_string(sb), {pos.x, pos.y + f32(len(field_names) * font_size)}, f32(font_size))
+	plumage.text_push(strings.to_string(sb), {pos.x, pos.y + f32(len(field_names) * font_size)}, f32(font_size))
 }

@@ -14,7 +14,6 @@ import "core:fmt"
 import "core:c"
 import "vendor:glfw"
 import gl "vendor:OpenGL"
-import "vendor:x11/xlib"
 
 
 window_open :: proc(window_width, window_height: i32, name: cstring) {
@@ -29,6 +28,7 @@ window_open :: proc(window_width, window_height: i32, name: cstring) {
 	glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 	glfw.WindowHint(glfw.OPENGL_FORWARD_COMPAT, true)
 	glfw.WindowHint(glfw.OPENGL_DEBUG_CONTEXT, true)
+	glfw.WindowHint(glfw.RESIZABLE, true)
 	glfw.SetErrorCallback(error_callback)
 	window_handle := glfw.CreateWindow(window_width, window_height, name, nil, nil)
 	if window_handle == nil {
@@ -62,9 +62,9 @@ mouse_move_callback :: proc "c" (window: glfw.WindowHandle, x_pos, y_pos: f64) {
 
 mouse_scroll_callback :: proc "c" (window: glfw.WindowHandle, x_offset, y_offset: f64) {
 	context = runtime.default_context()
-	if ctx.camera != nil && ctx.camera.(Camera_2D).zoom > 0.0 {
-		c := ctx.camera.(Camera_2D)
-		c.zoom = math.max(1.0, ctx.camera.(Camera_2D).zoom + f32(y_offset))
+	if ctx.camera != nil {
+		c := ctx.camera
+		c.zoom = math.max(1.0, ctx.camera.zoom + f32(y_offset) * 0.1)
 	}
 }
 
@@ -91,9 +91,13 @@ window_close :: proc() -> bool {
 		glfw.SetWindowShouldClose(ctx.window_hndl, true)
 	}
 
+	ctx.key_input_queue = {}
 	glfw.PollEvents()
 	ctx.mouse_clicked = false
 	glfw.SwapBuffers(ctx.window_hndl)
 	return bool(glfw.WindowShouldClose(ctx.window_hndl))
 }
 
+window_vsync_set :: proc(should_vsync: bool) {
+	glfw.SwapInterval(i32(should_vsync))
+}

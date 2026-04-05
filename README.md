@@ -3,18 +3,19 @@
 - Extend to be a GUI library intended to be used for other desktop applications
 
 ## Today
-- test out custom shader
-    - not working  might need to bind buffers or something along those lines for now
-    - requires more work
 - start more game stuff for now?
 
 ## Priorities
+- Textures
+    - Textures have artifacting from the ones around them
+    - Textures seem to also have a ~1-2 pixel gap when placed?
 - Custom shaders (Needed for lighting and stuff)
-    - Working for default shader
-    - Issue for custom shaders:
-        - push_vertex is reliant on specific sizes of vertices because we use BufferSubData there
-- Have an option to grab a custom rect from a sprite atlas
-    - in karl2d/Raylib this is src rect from DrawTexturePro
+    - Mostly working, main issue is trying to get default drawing procs to allow for custom vertex attributes 
+    - works for uniforms BUT you need to make sure you use texture + colour + pos in you shader output somewhere
+- fix input somehow
+    - this may need to be done in game code we'll see
+    - Needs to handle mods (shift, ctrl, etc..)
+    - Needs to be able to handle multiple pressed checks for same key
 
 ## Notes
 - Don't shy away from dynamic arrays as much
