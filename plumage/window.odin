@@ -37,7 +37,6 @@ window_open :: proc(window_width, window_height: i32, name: cstring) {
 	glfw.MakeContextCurrent(window_handle)
 	glfw.SwapInterval(0)
 
-	/* glfw.SetInputMode(window_handle, glfw.CURSOR, glfw.CURSOR_DISABLED) */
 	glfw.SetFramebufferSizeCallback(window_handle, resize_callback)
 	glfw.SetCursorPosCallback(window_handle, mouse_move_callback)
 	glfw.SetKeyCallback(window_handle, key_callback)
@@ -100,4 +99,9 @@ window_close :: proc() -> bool {
 
 window_vsync_set :: proc(should_vsync: bool) {
 	glfw.SwapInterval(i32(should_vsync))
+}
+
+window_cursor_set :: proc(hide_cursor: bool) {
+	state: i32 = hide_cursor ? glfw.CURSOR_HIDDEN : glfw.CURSOR_NORMAL
+	glfw.SetInputMode(ctx.window_hndl, glfw.CURSOR, state)
 }

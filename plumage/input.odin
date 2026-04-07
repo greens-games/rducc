@@ -1,6 +1,5 @@
 package plumage
 
-import "core:fmt"
 import "vendor:glfw"
 import "base:runtime"
 

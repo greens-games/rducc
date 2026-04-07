@@ -243,7 +243,7 @@ line_push :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1
 	length2 := end - start
 	l := linalg.length(length2)
 	//TODO: To do proper rotation we would want to fix/change rotation of a box to have custom origin
-	rot := math.atan2(end.y - start.y, end.x - start.x)
+	rot := math.to_degrees_f32(math.atan2(end.y - start.y, end.x - start.x))
 	/* linalg.normalize */
 	box_push({start.x, start.y}, {0, 0}, {l, thickness}, rot, colour)
 }
@@ -292,38 +292,8 @@ box_rotate_push :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour
 
 	ctx.loaded_texture = texture
 
-	//We are assuming origin around centre (Could add an optional field later)
-	_origin := pos + origin //Centre of shape
-
-	dx: f32 = -origin.x
-	dy: f32 = -origin.y
-
-	sin_rot := math.sin(rotation)
-	cos_rot := math.cos(rotation)
-
-	bot_left := Vec3{
-		_origin.x + dx * cos_rot - dy * sin_rot,
-		_origin.y + dx * sin_rot + dy * cos_rot,
-		0.0,
-	}
-
-	bot_right := Vec3{
-		_origin.x + (dx + scale.x) * cos_rot - dy * sin_rot,
-		_origin.y + (dx + scale.x) * sin_rot + dy * cos_rot,
-		0.0,
-	}
-
-	top_left := Vec3{
-		_origin.x + dx * cos_rot - (dy + scale.y) * sin_rot,
-		_origin.y + dx * sin_rot + (dy + scale.y) * cos_rot,
-		0.0,
-	}
-
-	top_right := Vec3{
-		_origin.x + (dx + scale.x) * cos_rot - (dy + scale.y) * sin_rot,
-		_origin.y + (dx + scale.x) * sin_rot + (dy + scale.y) * cos_rot,
-		0.0,
-	}
+	rotation := math.to_radians_f32(rotation)
+	bot_left, bot_right, top_left, top_right := rect_rotate(pos, origin, scale, rotation)
 
 	vertex_push(top_right, {1.0, 0.0}, colour, rotation)
 	vertex_push(bot_right, {1.0, 1.0}, colour, rotation)
@@ -658,6 +628,38 @@ sprite_atlas_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32,
 
 }
 
+sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture_Atlas, pos, origin, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
+
+	assert(src.x <= f32(atlas.width))
+	assert(src.y <= f32(atlas.height))
+	if should_commit(atlas.hndl, atlas.mode) {
+		commit()
+	}
+	ctx.loaded_texture = Ducc_Texture {
+		data   = atlas.data,
+		height = i32(atlas.height),
+		width  = i32(atlas.width),
+		hndl   = atlas.hndl,
+		mode   = atlas.mode
+	}
+
+	start_x := src.x / f32(atlas.width)
+	start_y := src.y / f32(atlas.height)
+
+	end_x := (src.width  + src.x) / f32(atlas.width)
+	end_y := (src.height + src.y) / f32(atlas.height)
+	rotation := math.to_radians_f32(rotation)
+	
+	bot_left, bot_right, top_left, top_right := rect_rotate(pos, origin, scale, rotation)
+
+	vertex_push(top_right,{end_x, start_y},     colour)
+	vertex_push(bot_right,          {end_x, end_y},   colour)
+	vertex_push(top_left,          {start_x, start_y},   colour)
+	vertex_push(bot_right,          {end_x, end_y},   colour)
+	vertex_push(bot_left,                    {start_x, end_y}, colour)
+	vertex_push(top_left,          {start_x, start_y},   colour)
+}
+
 //Read in some file name
 //Return back data about the texture
 sprite_load :: proc(data: []u8, width, height: int)  -> Ducc_Texture {
@@ -740,6 +742,48 @@ vertex_custom_push :: proc(vert_attributes: $T) {
 	(^T)(&ctx.batch_vertices[start])^ = vert_attributes */
 
 	ctx.batch_vertices_count += 1
+}
+
+@(private)
+rect_rotate :: proc(pos, origin, scale: [2]f32, rotation: f32) -> (
+	bot_left: Vec3,
+	bot_right: Vec3,
+	top_left: Vec3,
+	top_right: Vec3,
+) {
+	//We are assuming origin around centre (Could add an optional field later)
+	_origin := pos + origin //Centre of shape
+
+	dx: f32 = -origin.x
+	dy: f32 = -origin.y
+
+	sin_rot := math.sin(rotation)
+	cos_rot := math.cos(rotation)
+
+	bot_left = Vec3{
+		_origin.x + dx * cos_rot - dy * sin_rot,
+		_origin.y + dx * sin_rot + dy * cos_rot,
+		0.0,
+	}
+
+	bot_right = Vec3{
+		_origin.x + (dx + scale.x) * cos_rot - dy * sin_rot,
+		_origin.y + (dx + scale.x) * sin_rot + dy * cos_rot,
+		0.0,
+	}
+
+	top_left = Vec3{
+		_origin.x + dx * cos_rot - (dy + scale.y) * sin_rot,
+		_origin.y + dx * sin_rot + (dy + scale.y) * cos_rot,
+		0.0,
+	}
+
+	top_right = Vec3{
+		_origin.x + (dx + scale.x) * cos_rot - (dy + scale.y) * sin_rot,
+		_origin.y + (dx + scale.x) * sin_rot + (dy + scale.y) * cos_rot,
+		0.0,
+	}
+	return
 }
 
 @(private)
