@@ -18,7 +18,9 @@ CONSIDER THIS THE renderer LAYER
 	- Don't want to add too many app specific things here
 */
 
-import wgl "vendor:wasm/WebGL"
+import gl "vendor:wasm/WebGL"
+import "core:slice"
+import "core:math/linalg"
 
 Vec2 :: [2]f32
 Vec3 :: [3]f32
@@ -80,14 +82,49 @@ Rect :: struct {
 
 init :: proc(window_width, window_height: i32, name: cstring) {
 	window_open(window_width, window_height, name)
-	wgl.CreateCurrentContextById(string(name), {})
-	wgl.SetCurrentContextById(string(name))
+	gl.CreateCurrentContextById(string(name), {})
+	gl.SetCurrentContextById(string(name))
 
 	//TODO: These can't be freed (probably ok since they last the whole program
 	vs := #load("../res/vert_2d.glsl")
 	fs := #load("../res/frag_texture.glsl")
-	/* ctx.loaded_shader = shader_load_from_mem(vs, fs)
-	wgl.UseProgram(wgl.Program(ctx.loaded_shader.hndl)) */
+	ctx.loaded_shader = shader_load_from_mem(vs, fs)
+	gl.UseProgram(gl.Program(ctx.loaded_shader.hndl))
+
+	/* font4_img, font4_img_ok := image.load_from_bytes(#load("../res/default_font.png"))
+	assert(font4_img_ok == nil, fmt.tprintfln("%v", font4_img_ok))
+	ctx.default_font = font_load(font4_img.pixels.buf[:], font4_img.width, font4_img.height, 32, 30) */
+
+	white_rect: []u8 = make_slice([]u8, 1024) //NOTE: probably fine to jsut be heap allocated
+	slice.fill(white_rect, 255)
+	ctx.shape_texture_empty = sprite_load(white_rect, 16, 16)
+	projection_set()
+}
+
+projection_set :: proc() {
+	//Bottom left orientation
+	projection := glm.mat4Ortho3d(
+		0.0,
+		f32(ctx.window_width),
+		0.0,
+		f32(ctx.window_height),
+		-100.0,
+		100.0,
+	)
+
+	//Top-Left orientation
+	/* projection := glm.mat4Ortho3d(
+		0.0,
+		f32(ctx.window_width),
+		f32(ctx.window_height),
+		0.0,
+		-100.0,
+		100.0,
+	) */
+	/* gl.UniformMatrix4fv(ctx.loaded_uniforms["projection"].location, 1, false, &projection[0, 0]) */
+	shader_uniform_value_set("projection", .MATRIX_4, &projection[0, 0])
+	ctx.view_matrix = linalg.identity(matrix[4, 4]f32)
+	shader_uniform_value_set("view", .MATRIX_4, &ctx.view_matrix[0, 0])
 }
 
 background_clear :: proc(color: Colour) {
@@ -95,6 +132,6 @@ background_clear :: proc(color: Colour) {
 	g := f32(color.g) / 255.
 	b := f32(color.b) / 255.
 	a := f32(color.a) / 255.
-	wgl.ClearColor(r, g, b, a)
-	wgl.Clear(u32(wgl.COLOR_BUFFER_BIT) | u32(wgl.DEPTH_BUFFER_BIT))
+	gl.ClearColor(r, g, b, a)
+	gl.Clear(u32(gl.COLOR_BUFFER_BIT) | u32(gl.DEPTH_BUFFER_BIT))
 }
