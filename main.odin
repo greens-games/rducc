@@ -1,7 +1,5 @@
 package main
 
-import "core:os"
-import "core:math"
 import "core:image"
 import "core:image/png"
 import "core:image/bmp"
@@ -11,11 +9,6 @@ import "core:fmt"
 import "core:time"
 import "core:strconv"
 import "core:math/rand"
-import "core:thread"
-
-import ma "vendor:miniaudio"
-
-import "debug"
 import "plumage"
 import "peck"
 import "quack"
@@ -136,14 +129,14 @@ run :: proc() {
 			}
 		}
 
-		if plumage.window_is_key_pressed(.KEY_R) {
+		/* if plumage.window_is_key_pressed(.KEY_R) {
 			vs, vs_ok := os.read_entire_file_from_path("plumage/res/vert_2d.glsl", context.temp_allocator)
 			assert(vs_ok == nil, "Vert shader didn't load from file")
 			fs, fs_ok := os.read_entire_file_from_path("plumage/res/frag_texture.glsl", context.temp_allocator)
 			assert(fs_ok == nil, "Frag shader didn't load from file")
 			plumage.shader_load_from_mem(vs, fs)
 			plumage.projection_set()
-		}
+		} */
 
 		if plumage.window_is_key_pressed(.KEY_J) {
 			//play animation
@@ -242,8 +235,8 @@ run :: proc() {
 				plumage.push_box({origin.x + entity.scale.x/2, origin.y + entity.scale.y}, {point_size, point_size}, plumage.BLUE)
 			}
 			if debug_active_entity > -1 {
-				thing := entities[debug_active_entity]
-				game_utils.debug_entity_box({thing.pos.x, thing.pos.y + thing.scale.y}, thing.collider, plumage.BLACK)
+				/* thing := entities[debug_active_entity] */
+				/* game_utils.debug_entity_box({thing.pos.x, thing.pos.y + thing.scale.y}, thing.collider, plumage.BLACK) */
 			}
 		}
 		if anim_playing {
