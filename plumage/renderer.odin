@@ -459,7 +459,7 @@ text_push :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = c
 	for c in text {
 		switch c {
 		case '\n':
-			_pos.y -= font_size
+			_pos.y -= font_size //TODO: If we swap to top left origin this changes to +
 			i = 0
 			continue
 		}
