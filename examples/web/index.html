@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<title> Test </title>
+		<style>
+			canvas {
+				width: 100%
+			}
+			h1 {
+				text-align: center
+			}
+		</style>
+	</head>
+
+	<body>
+		<h1>Test Game</h1>
+		<canvas id="test-canvas"></canvas>
+	</body>
+
+
+	<script type="text/javascript" src="odin.js"></script>
+	<script type="text/javascript">
+		odin.runWasm("main.wasm", document.getElementById("test-console"));
+	</script>
+</html>
