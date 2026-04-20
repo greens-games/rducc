@@ -1,5 +1,6 @@
 package plumage
 
+import "core:slice"
 import gl "vendor:wasm/WebGL"
 import "core:fmt"
 import "core:strings"
@@ -149,6 +150,7 @@ Attribute_Kind :: enum {
 Uniform_Kind :: enum {
 	MATRIX_4,
 	VEC4_F32,
+	F32,
 }
 
 Var_Type :: union {
@@ -178,11 +180,11 @@ Shader_Var :: struct {
 shader_load :: proc(vs_shader, fs_shader: string) -> Shader_Progam {
 
 	//TODO:manual shader loading, compiling, etc... (Makes debugging easier), use OpenGL/helpers.odin as example
-	program_id, ok := gl.load_shaders_file(vs_shader, fs_shader)
+	program_id, ok := odin_load_shader(vs_shader, fs_shader)
 	if !ok {
 		panic(fmt.tprintfln("FAILED TO LOAD SHADERS:"))
 	}
-	shader_program := shader_parse_attributes(program_id)
+	shader_program := shader_parse_attributes(u32(program_id))
 	ctx.shader_cache[ctx.shader_cache_count] = shader_program
 	ctx.shader_cache_count += 1
 	/* gl.UseProgram(program_id) */
@@ -191,7 +193,7 @@ shader_load :: proc(vs_shader, fs_shader: string) -> Shader_Progam {
 
 shader_load_from_mem :: proc(vs_shader, fs_shader: []byte) -> Shader_Progam {
 
-	program_id, ok := gl.load_shaders_source(string(vs_shader), string(fs_shader))
+	program_id, ok := odin_load_shader(string(vs_shader), string(fs_shader))
 	if !ok {
 		panic(fmt.tprintfln("FAILED TO LOAD SHADERS:"))
 	}
@@ -205,7 +207,7 @@ shader_load_from_mem :: proc(vs_shader, fs_shader: []byte) -> Shader_Progam {
 			get current location
 			create struct based on what's needed there
 	*/
-	shader_program := shader_parse_attributes(program_id)
+	shader_program := shader_parse_attributes(u32(program_id))
 	ctx.shader_cache[ctx.shader_cache_count] = shader_program
 	ctx.shader_cache_count += 1
 	/* gl.UseProgram(program_id) */
@@ -294,18 +296,68 @@ get_uniforms_from_program :: proc(program: gl.Program) -> (uniforms: Uniforms) {
 	return uniforms
 }
 
-/* shader_uniform_value_set :: proc(name: string, kind: Uniform_Kind, value: rawptr) {
+@(private)
+odin_load_shader :: proc(vs_sources, fs_sources: string) -> (program: gl.Program, ok: bool) {
+	ok = true
+	log: [1024]byte
+
+	vs := gl.CreateShader(gl.VERTEX_SHADER)
+	fs := gl.CreateShader(gl.FRAGMENT_SHADER)
+	defer gl.DeleteShader(vs)
+	defer gl.DeleteShader(fs)
+	gl.ShaderSource(vs, {vs_sources})
+	gl.ShaderSource(fs, {fs_sources})
+	gl.CompileShader(vs)
+	if gl.GetShaderiv(vs, gl.COMPILE_STATUS) == 0 {
+		err := gl.GetShaderInfoLog(vs, log[:])
+		fmt.eprintln("Vertex shader did not compile successfully", err)
+		ok = false
+		return
+	}
+
+	gl.CompileShader(fs)
+	if gl.GetShaderiv(fs, gl.COMPILE_STATUS) == 0 {
+		err := gl.GetShaderInfoLog(fs, log[:])
+		fmt.eprintln("Fragment shader did not compile successfully", err)
+		ok = false
+		return
+	}
+
+	program = gl.CreateProgram()
+	defer if !ok { gl.DeleteProgram(program) }
+
+	gl.AttachShader(program, vs)
+	gl.AttachShader(program, fs)
+	gl.LinkProgram(program)
+	gl.DetachShader(program, vs)
+	gl.DetachShader(program, fs)
+
+	if gl.GetProgramParameter(program, gl.LINK_STATUS) == 0 {
+		err := gl.GetProgramInfoLog(program, log[:])
+		fmt.eprintln("Shader program did not link successfully", err)
+		ok = false
+		return
+	}
+
+	return
+}
+
+shader_uniform_value_set :: proc(name: string, kind: Uniform_Kind, value: rawptr) {
 
 	loc := ctx.loaded_shader.uniforms[name].location //TODO: Replace this with loaded shader
 	switch kind {
 	case .MATRIX_4:
 		_val := (cast(^matrix[4, 4]f32)value)^
-		gl.UniformMatrix4fv(loc, 1, false, &_val[0, 0])
+		gl.UniformMatrix4fv(loc, _val)
 	case .VEC4_F32:
 		_val := (cast(^[4]f32)value)^
-		gl.Uniform4fv(loc, 1, raw_data(_val[:]))
-	case: panic(fmt.tprintfln("Unsupported Matrix type: %v", kind))
+		/* gl.Uniform4fv(loc, {_val}) */
+		gl.Uniform4f(loc, _val.r, _val.g, _val.b, _val.a)
+	case .F32: 
+		_val := (cast(^f32)value)^
+		gl.Uniform1f(loc, _val)
+		/* gl.Uniform1i(loc, _val) */
+	case: panic(fmt.tprintfln("Unsupported Uniform type: %v", kind))
 	}
 
-} */
-
+}

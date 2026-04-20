@@ -91,8 +91,8 @@ Rect :: struct {
 	width:  f32,
 }
 
-init :: proc(window_width, window_height: i32, name: cstring) {
-	window_open(window_width, window_height, name)
+init :: proc(window_width, window_height: i32, name: cstring, full_screen := false) {
+	window_open(window_width, window_height, name, full_screen)
 	gl.load_up_to(4, 6, glfw.gl_set_proc_address) //required for proc address stuff
 	gl.Viewport(0, 0, ctx.window_width, ctx.window_height)
 	gl.Enable(gl.DEBUG_OUTPUT)
@@ -689,22 +689,22 @@ sprite_push :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation:
 
 	//TODO: This doesn't sit well with me 
 	//	flip{false, false} == sprite is right side up
-	vertex_push({pos.x + scale.x, pos.y + scale.y, pos.y},
+	vertex_push({pos.x + scale.x, pos.y + scale.y, 0.0},
 		        {f32(i32(!flip.x)), 0.0}, colour)
 
-	vertex_push({pos.x + scale.x, pos.y, pos.y},
+	vertex_push({pos.x + scale.x, pos.y, 0.0},
 			    {f32(i32(!flip.x)), 1.0}, colour)
 
-	vertex_push({pos.x, pos.y + scale.y, pos.y},
+	vertex_push({pos.x, pos.y + scale.y, 0.0},
 		        {f32(i32(flip.x)), 0.0}, colour)
 
-	vertex_push({pos.x + scale.x, pos.y, pos.y},
+	vertex_push({pos.x + scale.x, pos.y, 0.0},
 		        {f32(i32(!flip.x)), 1.0}, colour)
 	
-	vertex_push({pos.x, pos.y,           pos.y},
+	vertex_push({pos.x, pos.y,           0.0},
 		        {f32(i32(flip.x)), 1.0}, colour)
 
-	vertex_push({pos.x, pos.y + scale.y, pos.y},
+	vertex_push({pos.x, pos.y + scale.y, 0.0},
 		        {f32(i32(flip.x)), 0.0}, colour)
 }
 

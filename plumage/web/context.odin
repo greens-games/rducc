@@ -11,7 +11,6 @@ Context :: struct {
 	shader_cache_count:   u32,
 	loaded_shader:        Shader_Progam,
 	loaded_program:       u32,
-	/* loaded_uniforms:      gl.Uniforms, */
 	shape_texture_empty:  Ducc_Texture, //White box
 
 	//NOTE: Batching stuff

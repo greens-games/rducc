@@ -16,7 +16,7 @@ import "vendor:glfw"
 import gl "vendor:OpenGL"
 
 
-window_open :: proc(window_width, window_height: i32, name: cstring) {
+window_open :: proc(window_width, window_height: i32, name: cstring, full_screen := false) {
 	ctx = {}
 
 	//SetUp stuff
@@ -30,10 +30,22 @@ window_open :: proc(window_width, window_height: i32, name: cstring) {
 	glfw.WindowHint(glfw.OPENGL_DEBUG_CONTEXT, true)
 	glfw.WindowHint(glfw.RESIZABLE, true)
 	glfw.SetErrorCallback(error_callback)
-	window_handle := glfw.CreateWindow(window_width, window_height, name, nil, nil)
+	_window_width := window_width
+	_window_height := window_height
+
+	if full_screen {
+		primary_monitor := glfw.GetPrimaryMonitor()
+		primary_vid_mode := glfw.GetVideoMode(primary_monitor)
+		_window_width = primary_vid_mode.width
+		_window_height = primary_vid_mode.height
+	}
+
+	window_handle := glfw.CreateWindow(_window_width, _window_height, name, nil, nil)
+
 	if window_handle == nil {
 		fmt.println("Failed to create window")
 	}
+
 	glfw.MakeContextCurrent(window_handle)
 	glfw.SwapInterval(0)
 
@@ -42,10 +54,10 @@ window_open :: proc(window_width, window_height: i32, name: cstring) {
 	glfw.SetKeyCallback(window_handle, key_callback)
 	glfw.SetScrollCallback(window_handle, mouse_scroll_callback)
 	glfw.SetMouseButtonCallback(window_handle, mouse_button_callback)
-
-	ctx.window_width = window_width
-	ctx.window_height = window_height
+	ctx.window_width = _window_width
+	ctx.window_height = _window_height
 	ctx.window_hndl = window_handle
+
 	ctx.time = glfw.GetTime()
 }
 
