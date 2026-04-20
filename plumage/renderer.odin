@@ -546,12 +546,13 @@ rune_2_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.
 //////////////////////
 sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Ducc_Texture_Atlas {
 	texture_hndl: u32
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
 	gl.GenTextures(1, &texture_hndl)
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
 	texture_atlas: Ducc_Texture_Atlas
 	texture_atlas.data        = data
@@ -664,10 +665,13 @@ sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture_Atlas, pos, origin, scale: 
 //Return back data about the texture
 sprite_load :: proc(data: []u8, width, height: int)  -> Ducc_Texture {
 	texture_hndl: u32
+	gl.GenTextures(1, &texture_hndl)
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-	gl.GenTextures(1, &texture_hndl)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
 	texture: Ducc_Texture
 	//TODO: We probably want our system to not have to store all our texture data in memory all the time
@@ -835,7 +839,7 @@ commit :: proc() {
 
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.width, ctx.loaded_texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
-	gl.GenerateMipmap(gl.TEXTURE_2D)
+	/* gl.GenerateMipmap(gl.TEXTURE_2D) */
 
 	gl.DrawArrays(ctx.loaded_texture.mode, 0, ctx.batch_vertices_count)
 	ctx.batch_vertices_count = 0
