@@ -210,10 +210,6 @@ run :: proc() {
 			}
 		}
 
-		if constants.curr_level == .V {
-			plumage.text_push("Will you be my Valentine?\n<3", {21 * CELL_SIZE, 3 * CELL_SIZE}, 32)
-		}
-
 		if debug_mode {
 			draw_grid()
 			for index in 0..<entity_count {
