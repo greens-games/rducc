@@ -445,7 +445,7 @@ currently maps the font to a texture atlas and calls the renderer's texture atla
 //TODO: This requires the bitmap to be a square rows == cols
 text_push :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
 	_pos := pos
-	texture: Ducc_Texture_Atlas = {
+	texture: Ducc_Texture = {
 		hndl = font.hndl,
 		data = font.data,
 		height = font.height,
@@ -470,7 +470,7 @@ text_push :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = c
 
 rune_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
 	_pos := pos
-	texture: Ducc_Texture_Atlas = {
+	texture: Ducc_Texture = {
 		hndl = font.hndl,
 		data = font.data,
 		height = font.height,
@@ -493,7 +493,7 @@ rune_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.de
 
 rune_2_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.default_font, colour: Colour = WHITE) {
 	_pos := pos
-	texture: Ducc_Texture_Atlas = {
+	texture: Ducc_Texture = {
 		hndl = font.hndl,
 		data = font.data,
 		height = font.height,
@@ -544,7 +544,7 @@ rune_2_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.
 //////////////////////
 ////TC: TEXTURES
 //////////////////////
-sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Ducc_Texture_Atlas {
+sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Ducc_Texture {
 	texture_hndl: u32
 	gl.GenTextures(1, &texture_hndl)
 	gl.ActiveTexture(gl.TEXTURE0)
@@ -554,7 +554,7 @@ sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Du
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-	texture_atlas: Ducc_Texture_Atlas
+	texture_atlas: Ducc_Texture
 	texture_atlas.data        = data
 	texture_atlas.height      = i32(height)
 	texture_atlas.width       = i32(width)
@@ -570,18 +570,11 @@ sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Du
 //i.e 0,0 will be top left. atlas.rows - 1, atlas.cols - 1 will be bottom right
 //TODO: For non stb loaded images this is upside down
 //TODO: Instead of using indices for getting the texture should use sizes
-sprite_atlas_index_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, index: [2]i32, rotation: f32 = 0.0, colour: Colour = WHITE) {
+sprite_atlas_index_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, index: [2]i32, rotation: f32 = 0.0, colour: Colour = WHITE) {
 	if should_commit(atlas.hndl, atlas.mode) {
 		commit()
 	}
-	ctx.loaded_texture = Ducc_Texture {
-		data   = atlas.data,
-		height = i32(atlas.height),
-		width  = i32(atlas.width),
-		hndl   = atlas.hndl,
-		mode   = atlas.mode
-	}
-
+	ctx.loaded_texture = atlas
 	row_offset := 1.0/f32(atlas.rows)
 	col_offset := 1.0/f32(atlas.cols)
 
@@ -600,20 +593,13 @@ sprite_atlas_index_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [
 
 }
 
-sprite_atlas_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
+sprite_atlas_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
 	if should_commit(atlas.hndl, atlas.mode) {
 		commit()
 	}
-	ctx.loaded_texture = Ducc_Texture {
-		data   = atlas.data,
-		height = i32(atlas.height),
-		width  = i32(atlas.width),
-		hndl   = atlas.hndl,
-		mode   = atlas.mode
-	}
-
+	ctx.loaded_texture = atlas
 	start_x := src.x / f32(atlas.width)
 	start_y := src.y / f32(atlas.height)
 
@@ -629,7 +615,7 @@ sprite_atlas_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32,
 
 }
 
-sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture_Atlas, pos, origin, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
+sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture, pos, origin, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
 
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))

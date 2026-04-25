@@ -56,18 +56,10 @@ Ducc_Texture :: struct {
 	data:   []byte,
 	height: i32,
 	width:  i32,
-	mode:   u32,
-}
-
-Ducc_Texture_Atlas :: struct {
-	hndl:        u32,
-	data:        []byte,
-	height:      i32,
-	width:       i32,
 	rows:        i32,
 	cols:        i32,
 	sprite_size: i32,
-	mode:        u32,
+	mode:   u32,
 }
 
 Ducc_Font :: struct {

@@ -67,6 +67,7 @@ main :: proc() {
 		}
 	}
 	run()
+	plumage.window_destroy()
 }
 
 

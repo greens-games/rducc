@@ -109,6 +109,11 @@ window_close :: proc() -> bool {
 	return bool(glfw.WindowShouldClose(ctx.window_hndl))
 }
 
+window_destroy :: proc() {
+	glfw.DestroyWindow(ctx.window_hndl)
+	glfw.Terminate()
+}
+
 window_vsync_set :: proc(should_vsync: bool) {
 	glfw.SwapInterval(i32(should_vsync))
 }
