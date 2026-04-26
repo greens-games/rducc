@@ -119,23 +119,6 @@ init :: proc(window_width, window_height: i32, name: cstring, full_screen := fal
 	ctx.loaded_shader = shader_load_from_mem(vs, fs)
 	gl.UseProgram(ctx.loaded_shader.hndl)
 
-
-
-	when 1 == 0 {
-		gl.GenBuffers(1, &ctx.active_vbo)
-		gl.BindBuffer(gl.ARRAY_BUFFER, ctx.active_vbo)
-		gl.BufferData(gl.ARRAY_BUFFER, mem.Megabyte, nil, gl.DYNAMIC_DRAW)
-
-		gl.GenVertexArrays(1, &ctx.active_vao)
-		gl.BindVertexArray(ctx.active_vao)
-		gl.EnableVertexAttribArray(0)
-		gl.EnableVertexAttribArray(1)
-		gl.EnableVertexAttribArray(2)
-		gl.VertexAttribPointer(0, 3, gl.FLOAT, false, size_of(Vertex), (0 * size_of(f32)))
-		gl.VertexAttribPointer(1, 2, gl.FLOAT, false, size_of(Vertex), (3 * size_of(f32)))
-		gl.VertexAttribPointer(2, 4, gl.FLOAT, false, size_of(Vertex), (5 * size_of(f32)))
-	}
-
 	font4_img, font4_img_ok := image.load_from_bytes(#load("res/default_font.png"))
 	assert(font4_img_ok == nil, fmt.tprintfln("%v", font4_img_ok))
 	ctx.default_font = font_load(font4_img.pixels.buf[:], font4_img.width, font4_img.height, 32, 30)
@@ -284,7 +267,7 @@ rotation is in degress i.e 45 degree angle
 {0, 0} origin is bottom left
 scale/2 origin is centre
 */
-box_rotate_push :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour) {
+box_rotate_push :: proc(pos, scale, origin: [2]f32, rotation:f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	if should_commit(texture.hndl, texture.mode) {
 		commit()
@@ -615,7 +598,7 @@ sprite_atlas_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, src: 
 
 }
 
-sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture, pos, origin, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
+sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture, pos, scale, origin: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
 
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
@@ -701,6 +684,7 @@ sprite_push :: proc(texture: Ducc_Texture, pos: [2]f32, scale: [2]f32, rotation:
 //////////////////////
 /////TC: UTILS ///////
 //////////////////////
+//TODO: move sub data out and call after doing all vertex stuff
 vertex_push :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	vertex: Vertex
 	vertex.pos_coords = pos_coords
@@ -741,35 +725,35 @@ rect_rotate :: proc(pos, origin, scale: [2]f32, rotation: f32) -> (
 	top_left: Vec3,
 	top_right: Vec3,
 ) {
-	//We are assuming origin around centre (Could add an optional field later)
-	_origin := pos + origin //Centre of shape
+	_origin := pos + origin
 
 	dx: f32 = -origin.x
 	dy: f32 = -origin.y
 
-	sin_rot := math.sin(rotation)
-	cos_rot := math.cos(rotation)
+	sin_rot := math.sin(rotation) // 0
+	cos_rot := math.cos(rotation) // 1
 
+	//50, 50
 	bot_left = Vec3{
-		_origin.x + dx * cos_rot - dy * sin_rot,
+		_origin.x - dx * cos_rot + dy * sin_rot,
 		_origin.y + dx * sin_rot + dy * cos_rot,
 		0.0,
 	}
 
 	bot_right = Vec3{
-		_origin.x + (dx + scale.x) * cos_rot - dy * sin_rot,
+		_origin.x - (dx + scale.x) * cos_rot + dy * sin_rot,
 		_origin.y + (dx + scale.x) * sin_rot + dy * cos_rot,
 		0.0,
 	}
 
 	top_left = Vec3{
-		_origin.x + dx * cos_rot - (dy + scale.y) * sin_rot,
+		_origin.x - dx * cos_rot + (dy + scale.y) * sin_rot,
 		_origin.y + dx * sin_rot + (dy + scale.y) * cos_rot,
 		0.0,
 	}
 
 	top_right = Vec3{
-		_origin.x + (dx + scale.x) * cos_rot - (dy + scale.y) * sin_rot,
+		_origin.x - (dx + scale.x) * cos_rot + (dy + scale.y) * sin_rot,
 		_origin.y + (dx + scale.x) * sin_rot + (dy + scale.y) * cos_rot,
 		0.0,
 	}

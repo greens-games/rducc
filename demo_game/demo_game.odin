@@ -17,7 +17,7 @@ simulate_level :: proc(dt: f32, player: ^constants.Entity, entities: []constants
 	jump_height := player.scale.y * 3
 	starting_height := player.pos.y
 	//TC: Player Input
-	if plumage.window_is_key_pressed(.KEY_Q) {
+	if plumage.window_is_key_pressed(.Q) {
 		start_pos := f32(10 * player.direction) * f32((player.direction > 0) ? 2.5 : 1.5)
 		bullet := entity_init(
 			{player.pos.x  + start_pos, player.pos.y + player.scale.y/2},
@@ -31,12 +31,12 @@ simulate_level :: proc(dt: f32, player: ^constants.Entity, entities: []constants
 		constants.bullet_count += 1
 	}
 
-	if plumage.window_is_key_down(.KEY_D) {
+	if plumage.window_is_key_down(.D) {
 		player.velocity.x += (player.h_speed * dt)
 		player.direction = 1
 	}
 
-	if plumage.window_is_key_down(.KEY_A) {
+	if plumage.window_is_key_down(.A) {
 		player.velocity.x -= (player.h_speed * dt)
 		player.direction = -1
 	}
@@ -46,7 +46,7 @@ simulate_level :: proc(dt: f32, player: ^constants.Entity, entities: []constants
 		player.velocity.x = 0
 	}
 
-	if plumage.window_is_key_pressed(.KEY_SPACE) && constants.jumps > 0 {
+	if plumage.window_is_key_pressed(.SPACE) && constants.jumps > 0 {
 		starting_height = player.pos.y
 		constants.jumps -= 1
 		constants.jumping = true

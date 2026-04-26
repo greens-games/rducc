@@ -126,7 +126,7 @@ run :: proc() {
 
 		dt := f32(plumage.time_delta_get())
 		//TODO: Get some actual menu and pausing stuff going
-		if plumage.window_is_key_pressed(.KEY_P) {
+		if plumage.window_is_key_pressed(.P) {
 			game_state = game_state == .PLAYING ? .PAUSED : .PLAYING
 			if game_state == .PAUSED {
 				quack.play_sound(1)
@@ -137,7 +137,7 @@ run :: proc() {
 			}
 		}
 
-		if plumage.window_is_key_pressed(.KEY_R) {
+		if plumage.window_is_key_pressed(.R) {
 			vs, vs_ok := os.read_entire_file_from_path("plumage/res/vert_2d.glsl", context.temp_allocator)
 			assert(vs_ok == nil, "Vert shader didn't load from file")
 			fs, fs_ok := os.read_entire_file_from_path("plumage/res/frag_texture.glsl", context.temp_allocator)
@@ -146,12 +146,12 @@ run :: proc() {
 			plumage.projection_set()
 		}
 
-		if plumage.window_is_key_pressed(.KEY_J) {
+		if plumage.window_is_key_pressed(.J) {
 			//play animation
 			anim_playing = true
 		}
 
-		if plumage.window_is_mouse_button_pressed(.MOUSE_BUTTON_LEFT) {
+		if plumage.window_is_mouse_button_pressed(.LEFT) {
 			m_collider: peck.Collider
 			m_collider.kind = .RECT
 			m_collider.origin = m_pos
@@ -169,7 +169,7 @@ run :: proc() {
 			}
 		}
 
-		if plumage.window_is_key_pressed(.KEY_GRAVE_ACCENT) {
+		if plumage.window_is_key_pressed(.GRAVE_ACCENT) {
 			debug_mode = !debug_mode
 		}
 
