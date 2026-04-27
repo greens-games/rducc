@@ -190,7 +190,7 @@ background_clear :: proc(color: Colour) {
 pixel_push :: proc(pos: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.POINTS
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 1) {
 		commit()
 	}
 
@@ -205,7 +205,7 @@ pixel_push :: proc(pos: [2]f32, colour: Colour) {
 line_lines_push :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.LINES
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 2) {
 		commit()
 	}
 
@@ -217,7 +217,7 @@ line_lines_push :: proc(start: [2]f32, end: [2]f32, colour: Colour) {
 
 line_push :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1) {
 	texture := ctx.shape_texture_empty
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 6) {
 		commit()
 	}
 
@@ -228,21 +228,18 @@ line_push :: proc(start: [2]f32, end: [2]f32, colour: Colour, thickness: f32 = 1
 	//TODO: To do proper rotation we would want to fix/change rotation of a box to have custom origin
 	rot := math.to_degrees_f32(math.atan2(end.y - start.y, end.x - start.x))
 	/* linalg.normalize */
-	box_push({start.x, start.y}, {0, 0}, {l, thickness}, rot, colour)
+	box_rotate_push({start.x, start.y}, {l, thickness}, {0, 0}, rot, colour)
 }
 
 //NOTE: Trying out procedure groups here not sure if it's needed or too much
 //Trying to confine the logic here into 1 made the signature to long for the basic behaviour for my liking
-box_push :: proc{
-	box_base_push, box_rotate_push 
-}
 
 /*
 Basic box draw that does not rotate
 */
-box_base_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
+box_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 6) {
 		commit()
 	}
 
@@ -267,9 +264,10 @@ rotation is in degress i.e 45 degree angle
 {0, 0} origin is bottom left
 scale/2 origin is centre
 */
+//NOTE: For some reason negative angles rotate right and positive rotate left
 box_rotate_push :: proc(pos, scale, origin: [2]f32, rotation:f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 6) {
 		commit()
 	}
 
@@ -286,7 +284,19 @@ box_rotate_push :: proc(pos, scale, origin: [2]f32, rotation:f32, colour: Colour
 	vertex_push(top_left,  {0.0, 0.0}, colour, rotation)
 }
 
-box_lines_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+box_lines_rotate_push :: proc(pos, scale, origin: [2]f32, colour: Colour, rotation: f32 = 0.0) {
+
+	rotation := math.to_radians_f32(rotation)
+	bot_left, bot_right, top_left, top_right := rect_rotate(pos, origin, scale, rotation)
+
+	line_push(bot_left.xy, bot_right.xy, colour)
+	line_push(bot_right.xy, top_right.xy, colour)
+	line_push(top_right.xy, top_left.xy, colour)
+	line_push(top_left.xy, bot_left.xy, colour)
+
+}
+
+box_lines_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 
 	line_push(pos, pos + {scale.x, 0}, colour)
 	line_push(pos + {scale.x, 0}, pos + scale, colour)
@@ -310,7 +320,7 @@ box_lines2_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f3
 circle_push :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.TRIANGLES
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 3 * CIRCLE_SEGMENTS) {
 		commit()
 	}
 
@@ -340,7 +350,7 @@ circle_push :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 =
 polygon_push :: proc(pos: [2]f32, size: [2]f32, sides: int, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.TRIANGLES
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, i32(3 * sides)) {
 		commit()
 	}
 
@@ -371,7 +381,7 @@ polygon_push :: proc(pos: [2]f32, size: [2]f32, sides: int, colour: Colour, rota
 circle_lines_push :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
 	texture := ctx.shape_texture_empty
 	texture.mode = gl.TRIANGLE_FAN
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 3 * CIRCLE_SEGMENTS) {
 		commit()
 	}
 
@@ -554,7 +564,7 @@ sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Du
 //TODO: For non stb loaded images this is upside down
 //TODO: Instead of using indices for getting the texture should use sizes
 sprite_atlas_index_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, index: [2]i32, rotation: f32 = 0.0, colour: Colour = WHITE) {
-	if should_commit(atlas.hndl, atlas.mode) {
+	if should_commit(atlas.hndl, atlas.mode, 6) {
 		commit()
 	}
 	ctx.loaded_texture = atlas
@@ -579,7 +589,7 @@ sprite_atlas_index_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32,
 sprite_atlas_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
-	if should_commit(atlas.hndl, atlas.mode) {
+	if should_commit(atlas.hndl, atlas.mode, 6) {
 		commit()
 	}
 	ctx.loaded_texture = atlas
@@ -598,21 +608,15 @@ sprite_atlas_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, src: 
 
 }
 
+//NOTE: For some reason negative angles rotate right and positive rotate left
 sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture, pos, scale, origin: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
 
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
-	if should_commit(atlas.hndl, atlas.mode) {
+	if should_commit(atlas.hndl, atlas.mode, 6) {
 		commit()
 	}
-	ctx.loaded_texture = Ducc_Texture {
-		data   = atlas.data,
-		height = i32(atlas.height),
-		width  = i32(atlas.width),
-		hndl   = atlas.hndl,
-		mode   = atlas.mode
-	}
-
+	ctx.loaded_texture = atlas
 	start_x := src.x / f32(atlas.width)
 	start_y := src.y / f32(atlas.height)
 
@@ -691,16 +695,16 @@ vertex_push :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotat
 	vertex.texture_coords = uv_coords
 	vertex.colour = colour_apply(colour)
 
-	gl.BufferSubData(
+	/* gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		int(ctx.batch_vertices_count) * size_of(Vertex),
 		size_of(Vertex),
 		&vertex,
-	)
+	) */
 
 	//NOTE: this appears to be slower at based solely on monitoring fps (surface level)
-	/* start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
-	(^Vertex)(&ctx.batch_vertices[start])^ = vertex */
+	start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
+	(^Vertex)(&ctx.batch_vertices[start])^ = vertex
 
 	ctx.batch_vertices_count += 1
 }
@@ -719,6 +723,7 @@ vertex_custom_push :: proc(vert_attributes: $T) {
 }
 
 @(private)
+//TODO: For some reason negative angles rotate right and positive rotate left
 rect_rotate :: proc(pos, origin, scale: [2]f32, rotation: f32) -> (
 	bot_left: Vec3,
 	bot_right: Vec3,
@@ -733,36 +738,36 @@ rect_rotate :: proc(pos, origin, scale: [2]f32, rotation: f32) -> (
 	sin_rot := math.sin(rotation) // 0
 	cos_rot := math.cos(rotation) // 1
 
-	//50, 50
 	bot_left = Vec3{
-		_origin.x - dx * cos_rot + dy * sin_rot,
+		_origin.x + dx * cos_rot - dy * sin_rot,
 		_origin.y + dx * sin_rot + dy * cos_rot,
 		0.0,
 	}
 
 	bot_right = Vec3{
-		_origin.x - (dx + scale.x) * cos_rot + dy * sin_rot,
+		_origin.x + (dx + scale.x) * cos_rot - dy * sin_rot,
 		_origin.y + (dx + scale.x) * sin_rot + dy * cos_rot,
 		0.0,
 	}
 
 	top_left = Vec3{
-		_origin.x - dx * cos_rot + (dy + scale.y) * sin_rot,
+		_origin.x + dx * cos_rot - (dy + scale.y) * sin_rot,
 		_origin.y + dx * sin_rot + (dy + scale.y) * cos_rot,
 		0.0,
 	}
 
 	top_right = Vec3{
-		_origin.x - (dx + scale.x) * cos_rot + (dy + scale.y) * sin_rot,
+		_origin.x + (dx + scale.x) * cos_rot - (dy + scale.y) * sin_rot,
 		_origin.y + (dx + scale.x) * sin_rot + (dy + scale.y) * cos_rot,
 		0.0,
 	}
+
 	return
 }
 
 @(private)
-should_commit :: proc(hndl: u32, mode: u32) -> bool {
-	if ctx.batch_vertices_count * ctx.loaded_shader.vertex_size >= DEFAULT_BUFF_SIZE { return true }
+should_commit :: proc(hndl: u32, mode: u32, vertex_count: i32) -> bool {
+	if (ctx.batch_vertices_count + vertex_count) * ctx.loaded_shader.vertex_size >= DEFAULT_BUFF_SIZE { return true }
 	if ctx.loaded_texture.hndl != 0 && hndl != ctx.loaded_texture.hndl { return true }
 	if ctx.loaded_texture.mode != 0 && ctx.loaded_texture.mode != mode { return true }
 	return false
@@ -796,6 +801,12 @@ commit :: proc() {
 
 	gl.BindVertexArray(ctx.loaded_shader.vao)
 
+	gl.BufferSubData(
+		gl.ARRAY_BUFFER,
+		0,
+		int(ctx.batch_vertices_count) * size_of(Vertex),
+		raw_data(ctx.batch_vertices[:ctx.batch_vertices_count]),
+	)
 	//NOTE: this appears to be slower at based solely on monitoring fps (surface level)
 	/* vb_data := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)
 	{

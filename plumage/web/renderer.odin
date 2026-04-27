@@ -156,7 +156,7 @@ Basic box draw that does not rotate
 */
 box_base_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 6) {
 		commit()
 	}
 
@@ -183,7 +183,7 @@ scale/2 origin is centre
 */
 box_rotate_push :: proc(pos, origin, scale: [2]f32, rotation:f32, colour: Colour) {
 	texture := ctx.shape_texture_empty
-	if should_commit(texture.hndl, texture.mode) {
+	if should_commit(texture.hndl, texture.mode, 6) {
 		commit()
 	}
 
@@ -303,7 +303,7 @@ sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Du
 //TODO: For non stb loaded images this is upside down
 //TODO: Instead of using indices for getting the texture should use sizes
 sprite_atlas_index_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, index: [2]i32, rotation: f32 = 0.0, colour: Colour = WHITE) {
-	if should_commit(atlas.hndl, atlas.mode) {
+	if should_commit(atlas.hndl, atlas.mode, 6) {
 		commit()
 	}
 	ctx.loaded_texture = Ducc_Texture {
@@ -335,7 +335,7 @@ sprite_atlas_index_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [
 sprite_atlas_push :: proc(atlas: Ducc_Texture_Atlas, pos: [2]f32, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
-	if should_commit(atlas.hndl, atlas.mode) {
+	if should_commit(atlas.hndl, atlas.mode, 6) {
 		commit()
 	}
 	ctx.loaded_texture = Ducc_Texture {
@@ -365,7 +365,7 @@ sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture_Atlas, pos, origin, scale: 
 
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
-	if should_commit(atlas.hndl, atlas.mode) {
+	if should_commit(atlas.hndl, atlas.mode, 6) {
 		commit()
 	}
 	ctx.loaded_texture = Ducc_Texture {
@@ -418,16 +418,16 @@ vertex_push :: proc(pos_coords: [3]f32, uv_coords: [2]f32, colour: Colour, rotat
 	vertex.texture_coords = uv_coords
 	vertex.colour = colour_apply(colour)
 
-	gl.BufferSubData(
+	/* gl.BufferSubData(
 		gl.ARRAY_BUFFER,
 		uintptr(int(ctx.batch_vertices_count) * size_of(Vertex)),
 		size_of(Vertex),
 		&vertex,
-	)
+	) */
 
 	//NOTE: this appears to be slower at based solely on monitoring fps (surface level)
-	/* start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
-	(^Vertex)(&ctx.batch_vertices[start])^ = vertex */
+	start := ctx.batch_vertices_count * ctx.loaded_shader.vertex_size
+	(^Vertex)(&ctx.batch_vertices[start])^ = vertex
 
 	ctx.batch_vertices_count += 1
 }
@@ -475,8 +475,8 @@ rect_rotate :: proc(pos, origin, scale: [2]f32, rotation: f32) -> (
 }
 
 @(private)
-should_commit :: proc(hndl: u32, mode: u32) -> bool {
-	if ctx.batch_vertices_count * ctx.loaded_shader.vertex_size >= DEFAULT_BUFF_SIZE { return true }
+should_commit :: proc(hndl: u32, mode: u32, vertex_count: i32) -> bool {
+	if (ctx.batch_vertices_count * vertex_count) + ctx.loaded_shader.vertex_size >= DEFAULT_BUFF_SIZE { return true }
 	if ctx.loaded_texture.hndl != 0 && hndl != ctx.loaded_texture.hndl { return true }
 	if ctx.loaded_texture.mode != 0 && ctx.loaded_texture.mode != mode { return true }
 	return false
@@ -498,6 +498,8 @@ commit :: proc() {
 	}
 
 	gl.BindVertexArray(gl.VertexArrayObject(ctx.loaded_shader.vao))
+	gl.BindBuffer(gl.ARRAY_BUFFER, gl.Buffer(ctx.active_vbo))
+	gl.BufferDataSlice(gl.ARRAY_BUFFER, ctx.batch_vertices[:ctx.batch_vertices_count], gl.STREAM_DRAW)
 
 	//NOTE: this appears to be slower at based solely on monitoring fps (surface level)
 	/* vb_data := gl.MapBuffer(gl.ARRAY_BUFFER, gl.WRITE_ONLY)

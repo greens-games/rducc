@@ -11,7 +11,7 @@ main :: proc() {
 @(export)
 step :: proc(dt: f32) -> (keep_going: bool) {
 	web.background_clear(web.GRAY)
-	web.box_push({0, 0}, {32, 32}, web.RED)
+	web.box_push({10, 10}, {10, 10}, web.RED)
 	web.text_push("Hello Sailer", {0, 0}, 16)
 	web.commit()
 	return true
