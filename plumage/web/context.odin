@@ -37,6 +37,7 @@ Context :: struct {
 	curr_texture_hndl:    u32,
 	loaded_texture:       Ducc_Texture,
 	default_font:         Ducc_Font,
+	empty_texture:        [1024]u8,
 
 	//TODO: Maybe this should 
 	camera:               Maybe(Camera_2D),

@@ -191,6 +191,14 @@ shader_load :: proc(vs_shader, fs_shader: string) -> Shader_Progam {
 	return shader_program
 }
 
+shader_load_test :: proc(vs_shader, fs_shader: []byte) -> Shader_Progam {
+	program, ok := gl.CreateProgramFromStrings({string(vs_shader)}, {string(fs_shader)})
+	assert(ok)
+	return {
+		hndl = u32(program)
+	}
+}
+
 shader_load_from_mem :: proc(vs_shader, fs_shader: []byte) -> Shader_Progam {
 
 	program_id, ok := odin_load_shader(string(vs_shader), string(fs_shader))

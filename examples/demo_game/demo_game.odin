@@ -1,9 +1,9 @@
 package demo_game
 
-import "../plumage"
-import "../peck"
-import "../quack"
-import "../constants"
+import "../../plumage"
+import "../../peck"
+import "../../quack"
+import "../../constants"
 
 import "core:math/rand"
 

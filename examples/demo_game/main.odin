@@ -1,4 +1,4 @@
-package main
+package demo_game
 
 import "core:os"
 import "core:math"
@@ -15,13 +15,12 @@ import "core:thread"
 
 import ma "vendor:miniaudio"
 
-import "debug"
-import "plumage"
-import "peck"
-import "quack"
-import "demo_game"
-import "constants"
-import "../game_utils"
+import "../../debug"
+import "../../plumage"
+import "../../peck"
+import "../../quack"
+import "../../constants"
+import "../../../game_utils"
 
 
 /**
@@ -73,7 +72,7 @@ main :: proc() {
 
 run :: proc() {
 	//Game Init
-	plumage.init(WINDOW_WIDTH,WINDOW_HEIGHT,"plumage DEMO")
+	plumage.init(WINDOW_WIDTH,WINDOW_HEIGHT,"demo_game")
 	debug_mode := false
 	game_state: Game_State
 
@@ -107,7 +106,7 @@ run :: proc() {
 	quack.play_sound(0, true)
 
 	//Pseudo anime stuffs
-	sword_image, sword_ok := image.load_from_bytes(#load("./res/sword_test.png"))
+	sword_image, sword_ok := image.load_from_bytes(#load("../../res/sword_test.png"))
 	assert(sword_ok == nil)
 	sword_anim := plumage.sprite_atlas_load(sword_image.pixels.buf[:], sword_image.width, sword_image.height, 32)
 	anim_frame: i32 = 0
@@ -174,7 +173,7 @@ run :: proc() {
 		}
 
 		if game_state == .PLAYING {
-			if demo_game.simulate_level(dt, player, entities[1:entity_count], bullets) {
+			if simulate_level(dt, player, entities[1:entity_count], bullets) {
 				entity_count = hidden_level(entities[:], loaded_textures)
 			}
 		}
@@ -275,28 +274,6 @@ run :: proc() {
 	}
 }
 
-entity_init :: proc(pos: [2]f32, scale: [2]f32, kind: constants.Entity_Kind, texture := -1, direction: i8 = 1) -> constants.Entity {
-	entity := constants.Entity {
-		kind         = kind,
-		pos          = pos,
-		scale        = scale,
-		texture_hndl = i32(texture),
-		direction    = direction,
-		alive        = true,
-		h_speed      = 250,
-		v_speed      = 250,
-	}
-
-	collider  := peck.Collider {
-		kind   = .RECT,
-		origin = entity.pos,
-		scale  = entity.scale,
-		radius = entity.scale.x,
-	}
-	entity.collider = collider
-	return entity
-}
-
 draw_grid :: proc() {
 	rows: f32 = 50
 	cols: f32 = 50
@@ -317,27 +294,16 @@ draw_grid :: proc() {
 	}
 }
 
-hit_platform :: proc(collidee: peck.Collider, velocity: [2]f32, things: []constants.Entity, kind: constants.Entity_Kind = .PLATFORM) -> (bool, constants.Entity) {
-	_collidee := collidee
-	_collidee.origin += velocity
-	for thing in things {
-		if thing.kind == kind && peck.rect_collision(_collidee, thing.collider) {
-			return true, thing
-		}
-	}
-	return false, {}
-}
-
 load_textures :: proc(loaded_textures: ^[dynamic]plumage.Ducc_Texture) {
-	percy_image, percy_image_ok := image.load_from_bytes(#load("res/scuffed_percy.png"))
+	percy_image, percy_image_ok := image.load_from_bytes(#load("../../res/scuffed_percy.png"))
 	percy_texture := plumage.sprite_load(percy_image.pixels.buf[:], percy_image.width, percy_image.height)
 	append(loaded_textures, percy_texture)
 
-	enemy_image, enemy_image_ok := image.load_from_bytes(#load("res/player_filled.png"))
+	enemy_image, enemy_image_ok := image.load_from_bytes(#load("../../res/player_filled.png"))
 	enemy_texture := plumage.sprite_load(enemy_image.pixels.buf[:], enemy_image.width, enemy_image.height)
 	append(loaded_textures, enemy_texture)
 
-	heart_image, heart_image_ok := image.load_from_bytes(#load("res/Heart.png"))
+	heart_image, heart_image_ok := image.load_from_bytes(#load("../../res/Heart.png"))
 	heart_texture := plumage.sprite_load(heart_image.pixels.buf[:], heart_image.width, heart_image.height)
 	append(loaded_textures, heart_texture)
 }

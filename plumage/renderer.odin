@@ -116,6 +116,7 @@ init :: proc(window_width, window_height: i32, name: cstring, full_screen := fal
 	//TODO: These can't be freed (probably ok since they last the whole program
 	vs := #load("res/vert_2d.glsl")
 	fs := #load("res/frag_texture.glsl")
+	/* ctx.loaded_shader = shader_load_from_mem(vs, fs) */
 	ctx.loaded_shader = shader_load_from_mem(vs, fs)
 	gl.UseProgram(ctx.loaded_shader.hndl)
 
@@ -123,9 +124,9 @@ init :: proc(window_width, window_height: i32, name: cstring, full_screen := fal
 	assert(font4_img_ok == nil, fmt.tprintfln("%v", font4_img_ok))
 	ctx.default_font = font_load(font4_img.pixels.buf[:], font4_img.width, font4_img.height, 32, 30)
 
-	white_rect: []u8 = make_slice([]u8, 1024) //NOTE: probably fine to jsut be heap allocated
-	slice.fill(white_rect, 255)
-	ctx.shape_texture_empty = sprite_load(white_rect, 16, 16)
+	/* white_rect: []u8 = make_slice([]u8, 1024) //NOTE: probably fine to jsut be heap allocated */
+	slice.fill(ctx.empty_texture[:], 255)
+	ctx.shape_texture_empty = sprite_load(ctx.empty_texture[:], 16, 16)
 	projection_set()
 }
 
@@ -305,16 +306,6 @@ box_lines_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour) {
 
 }
 
-box_lines2_push :: proc(pos: [2]f32, scale: [2]f32, colour: Colour, rotation: f32 = 0.0) {
-
-	line_push(pos, pos + {scale.x, 0}, colour)
-	line_push(pos + {scale.x, 0}, pos + scale, colour)
-	line_push(pos + scale, pos + {0, scale.y}, colour)
-	line_push(pos + {0, scale.y}, pos, colour)
-
-}
-
-
 //NOTE: Possible issue here is that all our other draws are bottom left origins, this is center
 //However this is much better for accuracy when scaling up currently
 circle_push :: proc(pos: [2]f32, radius: [2]f32, colour: Colour, rotation: f32 = 0.0) {
@@ -420,7 +411,6 @@ font_bmp_load :: proc(font_data: []u8, width, height: int, offset: i32, sprite_s
 	
 	font: Ducc_Font
 	font.hndl = texture.hndl
-	font.data = texture.data
 	font.height = texture.height
 	font.width = texture.width
 	font.rows = texture.height/sprite_size
@@ -440,7 +430,6 @@ text_push :: proc(text: string, pos: [2]f32, font_size: f32, font: Ducc_Font = c
 	_pos := pos
 	texture: Ducc_Texture = {
 		hndl = font.hndl,
-		data = font.data,
 		height = font.height,
 		width = font.width,
 		rows = font.rows,
@@ -465,7 +454,6 @@ rune_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.de
 	_pos := pos
 	texture: Ducc_Texture = {
 		hndl = font.hndl,
-		data = font.data,
 		height = font.height,
 		width = font.width,
 		rows = font.rows,
@@ -488,7 +476,6 @@ rune_2_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.
 	_pos := pos
 	texture: Ducc_Texture = {
 		hndl = font.hndl,
-		data = font.data,
 		height = font.height,
 		width = font.width,
 		rows = font.rows,
@@ -540,15 +527,14 @@ rune_2_push :: proc(c: rune, pos: [2]f32, font_size: f32, font: Ducc_Font = ctx.
 sprite_atlas_load :: proc(data: []u8, width, height:int, sprite_size: i32) -> Ducc_Texture {
 	texture_hndl: u32
 	gl.GenTextures(1, &texture_hndl)
-	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, i32(width), i32(height), 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(data))
 
 	texture_atlas: Ducc_Texture
-	texture_atlas.data        = data
 	texture_atlas.height      = i32(height)
 	texture_atlas.width       = i32(width)
 	texture_atlas.hndl        = texture_hndl
@@ -586,7 +572,7 @@ sprite_atlas_index_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32,
 
 }
 
-sprite_atlas_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
+sprite_atlas_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, src: Rect, colour: Colour = WHITE) {
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
 	if should_commit(atlas.hndl, atlas.mode, 6) {
@@ -609,7 +595,7 @@ sprite_atlas_push :: proc(atlas: Ducc_Texture, pos: [2]f32, scale: [2]f32, src: 
 }
 
 //NOTE: For some reason negative angles rotate right and positive rotate left
-sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture, pos, scale, origin: [2]f32, src: Rect, rotation: f32 = 0.0, colour: Colour = WHITE) {
+sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture, pos, scale: [2]f32, src: Rect, origin: [2]f32, rotation: f32 = 0.0, colour: Colour = WHITE) {
 
 	assert(src.x <= f32(atlas.width))
 	assert(src.y <= f32(atlas.height))
@@ -639,16 +625,19 @@ sprite_atlas_rotate_push :: proc(atlas: Ducc_Texture, pos, scale, origin: [2]f32
 sprite_load :: proc(data: []u8, width, height: int)  -> Ducc_Texture {
 	texture_hndl: u32
 	gl.GenTextures(1, &texture_hndl)
-	gl.ActiveTexture(gl.TEXTURE0)
+	/* gl.ActiveTexture(gl.TEXTURE0) */
 	gl.BindTexture(gl.TEXTURE_2D, texture_hndl)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
+	//TODO: move texImage2D here and remove data from Texture
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, i32(width), i32(height), 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(data))
+
 	texture: Ducc_Texture
 	//TODO: We probably want our system to not have to store all our texture data in memory all the time
-	texture.data   = data
+	/* texture.data   = data */
 	texture.height = i32(height)
 	texture.width  = i32(width)
 	texture.hndl   = texture_hndl
@@ -818,8 +807,9 @@ commit :: proc() {
 	}
 	gl.UnmapBuffer(gl.ARRAY_BUFFER) */
 
+	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, ctx.loaded_texture.hndl)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.width, ctx.loaded_texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data))
+	/* gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.loaded_texture.width, ctx.loaded_texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, raw_data(ctx.loaded_texture.data)) */
 	/* gl.GenerateMipmap(gl.TEXTURE_2D) */
 
 	gl.DrawArrays(ctx.loaded_texture.mode, 0, ctx.batch_vertices_count)

@@ -106,9 +106,9 @@ init :: proc(window_width, window_height: i32, name: cstring) {
 	assert(font4_img_ok == nil, fmt.tprintfln("%v", font4_img_ok))
 	ctx.default_font = font_load(font4_img.pixels.buf[:], font4_img.width, font4_img.height, 32, 30)
 
-	white_rect: []u8 = make_slice([]u8, 1024) //NOTE: probably fine to jsut be heap allocated
-	slice.fill(white_rect, 255)
-	ctx.shape_texture_empty = sprite_load(white_rect, 16, 16)
+	/* white_rect: []u8 = make_slice([]u8, 1024) //NOTE: probably fine to jsut be heap allocated */
+	slice.fill(ctx.empty_texture[:], 255)
+	ctx.shape_texture_empty = sprite_load(ctx.empty_texture[:], 16, 16)
 	projection_set()
 }
 

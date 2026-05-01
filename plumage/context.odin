@@ -45,6 +45,7 @@ Context :: struct {
 	curr_texture_hndl:    u32,
 	loaded_texture:       Ducc_Texture,
 	default_font:         Ducc_Font,
+	empty_texture:        [1024]u8,
 
 	//TODO: Maybe this should 
 	camera:               ^Camera_2D,
@@ -52,19 +53,17 @@ Context :: struct {
 }
 
 Ducc_Texture :: struct {
-	hndl:   u32,
-	data:   []byte,
-	height: i32,
-	width:  i32,
+	hndl:        u32,
+	height:      i32,
+	width:       i32,
 	rows:        i32,
 	cols:        i32,
 	sprite_size: i32,
-	mode:   u32,
+	mode:        u32,
 }
 
 Ducc_Font :: struct {
 	hndl:        u32,
-	data:        []byte,
 	height:      i32,
 	width:       i32,
 	rows:        i32,
