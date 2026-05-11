@@ -1,5 +1,6 @@
 package quack
 
+import "core:mem"
 import ma "vendor:miniaudio"
 
 //TODO: This currently is just a wrapper to miniaudio's high-level api
@@ -9,6 +10,7 @@ import ma "vendor:miniaudio"
 Quack_Sound :: struct {
 	data: ma.sound,
 	loop: bool,
+	decorder: ma.decoder,
 }
 
 Quack_Context :: struct {
@@ -22,6 +24,21 @@ ctx: Quack_Context
 audio_init :: proc() {
 	ma.engine_init(nil, &ctx.engine)
 	ctx.sounds = make_dynamic_array([dynamic]Quack_Sound)
+}
+
+sound_load_from_bytes :: proc(data: []u8) {
+	//NOTE: try using something in here github.com/mackron/issues/731 the gist has a potential example
+	sound: Quack_Sound
+	append(&ctx.sounds, sound)
+	/* decorder_config := ma.decoder_config_init(.u8, u32(header.num_channels), u32(header.sample_rate)) */
+	ma.decoder_init_memory(raw_data(data), len(data), nil, &(ctx.sounds[len(ctx.sounds) - 1].decorder))
+	ma.sound_init_from_data_source(
+		&ctx.engine,
+		cast(^ma.data_source)&ctx.sounds[len(ctx.sounds) - 1].decorder,
+		{.STREAM, .DECODE},
+		nil,
+		&ctx.sounds[len(ctx.sounds) - 1].data
+	)
 }
 
 sound_load_from_file :: proc(file_path: cstring) {

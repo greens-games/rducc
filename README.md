@@ -2,6 +2,10 @@
 - Inital intention is to learn graphics programming by building a basic immediate mode graphics renderer library
 - Extend to be a GUI library intended to be used for other desktop applications
 
+## TODO
+- top-left orientation is now a thing
+- most drawing should be done test it a bit
+- GET WEB WORKING (graphics + sound) VERY IMPORTANT SO I CAN DEPLOY TO ITCH
 
 ## Priorities
 - Textures

@@ -10,16 +10,18 @@ NOTE: We might want to look into using some other structure for cameras instead 
 Camera_2D :: struct {
 	target: [2]f32,
 	zoom:      f32,
+	rotation:  f32,
 }
 
 /**
 Initialize camera with certain params
 return the camera struct for the user to own
 */
-camera_init :: proc(target: [2]f32, zoom: f32) -> Camera_2D {
+camera_init :: proc(target: [2]f32, zoom: f32, rotation: f32 = 0) -> Camera_2D {
 	camera: Camera_2D
 	camera.zoom = zoom
 	camera.target = target
+	camera.rotation = rotation
 	return camera
 }
 
@@ -32,7 +34,7 @@ camera_begin :: proc(camera: ^Camera_2D) {
 	ctx.camera = camera
 	c := ctx.camera
 	inv_target_translate := linalg.matrix4_translate_f32({-c.target.x, -c.target.y, 0})
-	/* inv_rot := linalg.matrix4_rotate_f32(c.rotation, {0, 0, 1}) */
+	inv_rot := linalg.matrix4_rotate_f32(c.rotation, {0, 0, 1})
 	inv_scale := linalg.matrix4_scale_f32({c.zoom, c.zoom, 1})
 	/* inv_offset_translate := linalg.matrix4_translate(vec3_from_vec2(c.offset)) */
 	inv_offset_translate := linalg.matrix4_translate_f32({f32(ctx.window_width)/2, f32(ctx.window_height)/2, 0})

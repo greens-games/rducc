@@ -68,7 +68,7 @@ error_callback :: proc "c" (error: c.int, description: cstring) {
 
 mouse_move_callback :: proc "c" (window: glfw.WindowHandle, x_pos, y_pos: f64) {
 	context = runtime.default_context()
-	ctx.mouse_pos = {f32(x_pos), f32(ctx.window_height) - f32(y_pos)}
+	ctx.mouse_pos = {f32(x_pos), f32(y_pos)}
 }
 
 mouse_scroll_callback :: proc "c" (window: glfw.WindowHandle, x_offset, y_offset: f64) {

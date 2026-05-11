@@ -101,7 +101,7 @@ run :: proc() {
 	fps_timer: time.Stopwatch
 
 	quack.audio_init()
-	quack.sound_load_from_file("./brackeys_platformer_assets/music/time_for_adventure.mp3")
+	quack.sound_load_from_bytes(#load("../../brackeys_platformer_assets/music/time_for_adventure.mp3"))
 	quack.sound_load_from_file("./brackeys_platformer_assets/sounds/jump.wav")
 	quack.play_sound(0, true)
 
